@@ -400,12 +400,33 @@
 
       let viewportCanvas;
       try {
+        // Recompute scaleFactor in case the page dimensions have changed
+        const fullH2 = document.documentElement.scrollHeight;
+        const fullW2 = document.documentElement.scrollWidth;
+        const maxTex2 = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) || 8192;
+        let newScale = Math.min(1, maxTex2 / fullW2, maxTex2 / fullH2);
+        if (newScale > 0.5) newScale = 0.5;
+        this.scaleFactor = newScale;
+
+        const isXOrigin = (src) => {
+          try {
+            const u = new URL(src, document.baseURI);
+            return u.origin !== location.origin;
+          } catch {
+            return false;
+          }
+        };
+
         const h2cOpts = {
-          allowTaint: true,
-          useCORS: false,
+          allowTaint: false, // keep canvas untainted for WebGL
+          useCORS: true,
           backgroundColor: null,
           removeContainer: true,
-          ignoreElements: (el) => el.tagName === "CANVAS",
+          ignoreElements: (el) => {
+            if (el.tagName === "CANVAS") return true;
+            if (el.tagName === "IMG" && isXOrigin(el.src)) return true;
+            return false;
+          },
         };
         if (Number.isFinite(this.scaleFactor)) h2cOpts.scale = this.scaleFactor;
 
