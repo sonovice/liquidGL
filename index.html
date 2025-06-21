@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>liquidGlass Effect Demo</title>
+    <title>liquidGlass WebGL - NaughtyDuk©</title>
+    <link rel="icon" href="/assets/favicon.ico" />
     <style>
       :root {
         --text-color: #333333;
@@ -333,8 +334,7 @@
       <h1 class="headline split">liquidGlass</h1>
       <p class="sub-headline split">
         Inspired by Apple's upcoming Liquid Glass, this lightweight script uses
-        WebGL to create a beautiful, transparent, refractive glass effect on any
-        element.
+        WebGL to create a beautiful, transparent, refractive glass effect.
       </p>
       <div class="center-text">
         <div class="affiliation-info">
@@ -363,6 +363,10 @@
           >
         </div>
         <div class="preset-option">
+          <input type="radio" id="preset-edge" name="preset" value="EDGE" />
+          <label for="preset-edge"><span class="button-text">EDGE</span></label>
+        </div>
+        <div class="preset-option">
           <input type="radio" id="preset-pulse" name="preset" value="PULSE" />
           <label for="preset-pulse"
             ><span class="button-text">PULSE</span></label
@@ -373,10 +377,6 @@
           <label for="preset-frost"
             ><span class="button-text">FROST</span></label
           >
-        </div>
-        <div class="preset-option">
-          <input type="radio" id="preset-edge" name="preset" value="EDGE" />
-          <label for="preset-edge"><span class="button-text">EDGE</span></label>
         </div>
       </div>
 
@@ -428,11 +428,14 @@
         <p class="disclaimer-text">
           <strong>Limitations:</strong> Due to performance considerations, the
           liquidGlass effect cannot support real-time refraction of moving
-          content. The effect works by taking a high-resolution snapshot of the
-          page background when liquidGlass is first initialised. Any elements
-          that are not visible when this snapshot is taken will not appear in
-          the refraction effect. The effect requires a browser with WebGL
-          support.
+          content i.e video. The effect relies on the page content being visible
+          on load as it takes a high-resolution snapshot of the page background
+          when liquidGlass is first initialised. You can make the effect
+          compatible with scroll animations by making all content visible on
+          load and then setting initial animation states in the on.init()
+          function. You should set above the fold animations i.e intro animations to run before
+          initialising liquidGlass.</br></br><strong>This
+          effect requires a browser with WebGL support.</strong>
         </p>
       </div>
     </div>
@@ -525,6 +528,9 @@
 
         // A function to initialize the glass effect and its controls
         function initializeLiquidGlass() {
+          // Will hold the GUI objects once the effect is ready
+          let gui, glassFolder;
+
           // Initialize the Liquid Glass effect on our menu
           glassEffect = liquidGlass({
             target: ".menu-wrap",
@@ -533,31 +539,38 @@
             bevelWidth: 0.211,
             frost: 2,
             shadow: true,
-          });
+            on: {
+              init(instance) {
+                // Setup lil-gui controls only after liquidGlass is fully initialised
+                gui = new lil.GUI();
+                glassFolder = gui.addFolder("liquidGlass Effect");
 
-          // Setup lil-gui controls
-          const gui = new lil.GUI();
-          const glassFolder = gui.addFolder("liquidGlass Effect");
-          glassFolder
-            .add(glassEffect.options, "refraction", 0, 0.1, 0.001)
-            .name("Refraction");
-          glassFolder
-            .add(glassEffect.options, "bevelDepth", 0, 0.2, 0.001)
-            .name("Bevel Depth");
-          glassFolder
-            .add(glassEffect.options, "bevelWidth", 0, 0.5, 0.001)
-            .name("Bevel Width");
-          glassFolder
-            .add(glassEffect.options, "frost", 0, 10, 0.1)
-            .name("Frost");
-          glassFolder.add(glassEffect.options, "specular").name("Specular");
-          glassFolder
-            .add(glassEffect.options, "shadow")
-            .name("Enable Shadow")
-            .onChange((value) => {
-              glassEffect.setShadow(value);
-            });
-          glassFolder.close();
+                glassFolder
+                  .add(instance.options, "refraction", 0, 0.1, 0.001)
+                  .name("Refraction");
+                glassFolder
+                  .add(instance.options, "bevelDepth", 0, 0.2, 0.001)
+                  .name("Bevel Depth");
+                glassFolder
+                  .add(instance.options, "bevelWidth", 0, 0.5, 0.001)
+                  .name("Bevel Width");
+                glassFolder
+                  .add(instance.options, "frost", 0, 10, 0.1)
+                  .name("Frost");
+                glassFolder
+                  .add(instance.options, "specular")
+                  .name("Specular");
+                glassFolder
+                  .add(instance.options, "shadow")
+                  .name("Enable Shadow")
+                  .onChange((value) => {
+                    instance.setShadow(value);
+                  });
+                glassFolder.close();
+                console.log("liquidGlass initialised");
+              },
+            },
+          });
 
           const presets = {
             DEFAULT: {
@@ -623,7 +636,9 @@
                   glassEffect.setShadow(newSettings.shadow);
 
                   // The lil-gui checkbox for shadow also needs to be updated.
-                  glassFolder.controllers.forEach((c) => c.updateDisplay());
+                  if (glassFolder && glassFolder.controllers) {
+                    glassFolder.controllers.forEach((c) => c.updateDisplay());
+                  }
                 }
               });
             });

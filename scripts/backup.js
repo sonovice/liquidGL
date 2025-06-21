@@ -147,30 +147,7 @@
         );
         return;
       }
-      // Kick-off the initial capture and expose a promise we can await.
-      // Consumers can hook into the lifecycle with an `on.init` callback in
-      // the options object:
-      //
-      // liquidGlass({
-      //   on: {
-      //     init(instance) { /* runs after first capture */ }
-      //   }
-      // });
-      const firstCapture = this.captureFullPage();
-
-      // Expose the promise for external use and fire the optional callback
-      // once the effect is fully initialised.
-      this.initPromise = firstCapture.then(() => {
-        if (
-          this.options &&
-          this.options.on &&
-          typeof this.options.on.init === "function"
-        ) {
-          // Call the handler with `this` (the LiquidGlass instance) as both
-          // context and first argument for convenience.
-          this.options.on.init.call(this, this);
-        }
-      });
+      this.captureFullPage();
 
       const fullH = document.documentElement.scrollHeight;
       const fullW = document.documentElement.scrollWidth;
@@ -536,8 +513,6 @@
       frost: 0,
       shadow: true,
       specular: true,
-      // Event hooks mirroring Swiper/Splide style: `{ on: { init() {} } }`.
-      on: {},
     };
     const options = { ...defaults, ...userOptions };
 
