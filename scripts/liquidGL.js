@@ -81,13 +81,12 @@
       // that we cover quirks across mobile browsers (e.g. some expose only
       // WebGL2, others still rely on the historical "experimental-webgl"
       // context name). The very first successful call will be used.
-      const contextAttributes = { alpha: true, premultipliedAlpha: true };
+      const ctxAttribs = { alpha: true, premultipliedAlpha: true };
       this.gl =
-        this.canvas.getContext("webgl2", contextAttributes) ||
-        this.canvas.getContext("webgl", contextAttributes) ||
-        this.canvas.getContext("experimental-webgl", contextAttributes);
+        this.canvas.getContext("webgl", ctxAttribs) ||
+        this.canvas.getContext("experimental-webgl", ctxAttribs);
       if (!this.gl) {
-        console.warn("WebGL not available – skipping liquid glass");
+        console.warn("WebGL unavailable");
         this.canvas.remove();
         return;
       }
@@ -118,14 +117,25 @@
       this.initialY = 0;
       this.startTime = Date.now();
 
-      this.resizeObserver = new ResizeObserver(() => this.resize());
-      this.resizeObserver.observe(this.el);
+      // --------------------------------------------------------------
+      // Resize handling – use ResizeObserver when available; fall back
+      // to window resize events on older mobile browsers (e.g. iOS 12).
+      // --------------------------------------------------------------
+      if ("ResizeObserver" in window) {
+        this.resizeObserver = new ResizeObserver(() => this.resize());
+        this.resizeObserver.observe(this.el);
 
-      // Add a resize observer to the body to recapture the background on resize.
-      // This is debounced to avoid performance issues.
-      const debouncedRecapture = debounce(() => this.captureFullPage(), 250);
-      const bodyResizeObserver = new ResizeObserver(debouncedRecapture);
-      bodyResizeObserver.observe(document.body);
+        // Debounced body resize observer to recapture the background.
+        const debouncedRecapture = debounce(() => this.captureFullPage(), 250);
+        const bodyResizeObserver = new ResizeObserver(debouncedRecapture);
+        bodyResizeObserver.observe(document.body);
+      } else {
+        const debouncedResize = debounce(() => {
+          this.resize();
+          this.captureFullPage();
+        }, 250);
+        window.addEventListener("resize", debouncedResize, { passive: true });
+      }
 
       // Track scroll cheaply – just update an offset uniform.
       this.scrollOffset = window.scrollY;
@@ -141,6 +151,7 @@
         { passive: true }
       );
 
+      console.log("-- init GL called");
       this.initGL();
       this.resize();
 
@@ -151,25 +162,34 @@
         return;
       }
 
-      const firstCapture = this.captureFullPage();
-
-      this.initPromise = firstCapture.then(() => {
-        if (
-          this.options &&
-          this.options.on &&
-          typeof this.options.on.init === "function"
-        ) {
-          this.options.on.init.call(this, this);
-        }
-      });
-
+      // Calculate scaleFactor BEFORE taking the first snapshot so that we
+      // never hand an undefined value to html2canvas (which would otherwise
+      // result in NaNs and silent failures on iOS/Android).
       const fullH = document.documentElement.scrollHeight;
       const fullW = document.documentElement.scrollWidth;
       const maxTex = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) || 8192;
       let scale = Math.min(1, maxTex / fullW, maxTex / fullH);
-      // Downscale a bit more to reduce memory
-      if (scale > 0.5) scale = 0.5;
+      if (scale > 0.5) scale = 0.5; // save a bit of memory
       this.scaleFactor = scale;
+
+      const startCapture = () => {
+        const firstCapture = this.captureFullPage();
+        this.initPromise = firstCapture.then(() => {
+          if (
+            this.options &&
+            this.options.on &&
+            typeof this.options.on.init === "function"
+          ) {
+            this.options.on.init.call(this, this);
+          }
+        });
+      };
+
+      if (document.readyState === "complete") {
+        startCapture();
+      } else {
+        window.addEventListener("load", startCapture, { once: true });
+      }
 
       this.setShadow(this.options.shadow);
     }
@@ -367,7 +387,10 @@
     }
 
     /* ----------------------------- */
-    async captureFullPage() {
+    async captureFullPage(attempt = 0) {
+      if (this.captureBusy) return;
+      this.captureBusy = true;
+
       const rect = this.el.getBoundingClientRect();
 
       this.canvas.style.visibility = "hidden";
@@ -377,27 +400,34 @@
 
       let viewportCanvas;
       try {
-        viewportCanvas = await window.html2canvas(document.body, {
-          scale: this.scaleFactor,
+        const h2cOpts = {
+          allowTaint: true,
+          useCORS: false,
           backgroundColor: null,
-          useCORS: true,
           removeContainer: true,
-          onclone: (doc) => {
-            const ghost = doc.querySelector(`[${tempAttr}]`);
-            if (ghost) ghost.remove();
-          },
-          // Ignore other canvas elements to prevent warnings and capture issues.
           ignoreElements: (el) => el.tagName === "CANVAS",
-        });
+        };
+        if (Number.isFinite(this.scaleFactor)) h2cOpts.scale = this.scaleFactor;
+
+        console.log(
+          `LiquidGL: capture attempt ${attempt}, scale ${this.scaleFactor}`
+        );
+        viewportCanvas = await html2canvas(document.body, h2cOpts);
       } catch (e) {
         console.warn("html2canvas failed", e);
       } finally {
         this.canvas.style.visibility = "visible";
         this.el.removeAttribute(tempAttr);
+        this.captureBusy = false;
       }
 
-      if (!viewportCanvas) return;
+      if (!viewportCanvas) {
+        console.warn(`LiquidGL: capture attempt ${attempt} returned null`);
+        this.el.style.opacity = this.originalOpacity || 1;
+        return;
+      }
 
+      console.log(`LiquidGL: capture attempt ${attempt} succeeded`);
       this.updateTexture(viewportCanvas);
       this.fadeIn();
 
@@ -500,3 +530,5 @@
     return targetEl._LiquidGL;
   };
 })();
+
+console.log("-- SplitText started");

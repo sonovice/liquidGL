@@ -495,6 +495,7 @@
         fontsReady.then(() => {
           gsap.set(".split", { visibility: "visible" });
 
+          console.log('-- SplitText started');
           let split = SplitText.create(".split", {
             type: "lines",
             linesClass: "line",
@@ -532,6 +533,7 @@
 
         // A function to initialize the glass effect and its controls
         function initializeLiquidGL() {
+          console.log('-- init GL called');
           // Will hold the GUI objects once the effect is ready
           let gui, glassFolder;
 
