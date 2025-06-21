@@ -67,11 +67,13 @@ All options are optional—only `target` is required.
 
 Below are some ready-made configurations you can copy-paste. Feel free to tweak values to suit your design.
 
-| Name              | Settings                                                                                             | Purpose                                               |
-| ----------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| **Default**       | `{ refraction: 0.01, bevelDepth: 0.08, bevelWidth: 0.15, frost: 0, shadow: true, specular: true }`   | Balanced clarity with subtle bevel and highlights.    |
-| **Frosted glass** | `{ refraction: 0.015, bevelDepth: 0.04, bevelWidth: 0.18, frost: 3, shadow: true, specular: false }` | Softer, heavily diffused look—ideal over busy images. |
-| **Minimal pane**  | `{ refraction: 0, bevelDepth: 0.05, bevelWidth: 0.12, frost: 0, shadow: false, specular: false }`    | Almost flat sheet of glass without extras.            |
+| Name        | Settings                                                                                               | Purpose                                                 |
+| ----------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------- |
+| **Default** | `{ refraction: 0, bevelDepth: 0.052, bevelWidth: 0.211, frost: 2, shadow: true, specular: true }`      | Balanced default used in the demo.                      |
+| **Alien**   | `{ refraction: 0.073, bevelDepth: 0.2, bevelWidth: 0.156, frost: 2, shadow: true, specular: false }`   | Strong refraction & deep bevel for a sci-fi look.       |
+| **Pulse**   | `{ refraction: 0.03, bevelDepth: 0, bevelWidth: 0.273, frost: 0, shadow: false, specular: false }`     | Flat pane with wide bevel—great for pulsing UI effects. |
+| **Frost**   | `{ refraction: 0, bevelDepth: 0.035, bevelWidth: 0.119, frost: 0.9, shadow: true, specular: true }`    | Softly diffused, privacy-glass style.                   |
+| **Edge**    | `{ refraction: 0.047, bevelDepth: 0.136, bevelWidth: 0.076, frost: 2, shadow: true, specular: false }` | Thin bevel and bright rim highlights.                   |
 
 ---
 
