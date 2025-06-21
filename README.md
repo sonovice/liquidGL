@@ -4,7 +4,7 @@ LiquidGlass turns any fixed-position element into a perfectly refracted, glossy 
 
 ## Overview
 
-`liquidGlass` recreates Apple's upcoming "Liquid Glass" aesthetic in the browser with an ultra-light WebGL shader. Because WebGL cannot read live pixels for security reasons, the library takes a single high-resolution snapshot of the page when you call `liquidGlass()`. This keeps performance smooth, but it also means the pane can't refract content that changes afterwards—such as playing video or animations.
+`liquidGlass` recreates Apple's upcoming "Liquid Glass" aesthetic in the browser with an ultra-light WebGL shader. Because WebGL cannot read live pixels for security reasons, the library takes a single high-resolution snapshot of the page when you call `liquidGlass()`. This keeps performance smooth, but it also means the pane can't refract content that changes afterwards—such as playing video or animations. Your page can still have video and animations, they just won't be reffracted through the lens.
 
 ---
 
