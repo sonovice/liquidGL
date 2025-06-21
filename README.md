@@ -33,6 +33,26 @@ Add **both** of the following scripts before you initialise LiquidGL (normally a
 
 ## Quick start
 
+First, set up your HTML. The key is to have a parent element that will receive the glass effect, and a child element for your content.
+
+```html
+<!-- Example HTML structure -->
+<body>
+  <!-- A container to position your glass element -->
+  <div class="fixed-container">
+    <!-- This is the target for LiquidGL, identified by its class -->
+    <div class="selector">
+      <!-- Your content goes inside the target -->
+      <div class="content">
+        <p>This text will appear on top of the glass.</p>
+      </div>
+    </div>
+  </div>
+</body>
+```
+
+Next, initialise the library with the selector for your target element.
+
 ```html
 <script>
   document.addEventListener("DOMContentLoaded", () => {
@@ -117,15 +137,21 @@ Below are some ready-made configurations you can copy-paste. Feel free to tweak 
 ## Limitations
 
 - Animated or video content **behind** the pane is not re-captured in real-time; the snapshot is static for performance reasons.
-- All page content must be present (visible in the DOM) **before** you initialise LiquidGL. Deferred/scroll-triggered animations should be started **after** `on.init`.
+- All page content must be present (visible in the DOM) **before** you initialise LiquidGL. Deferred/scroll-triggered animations should be started **in** `on.init`.
 - The initial capture is synchronous and may block the main thread momentarily; call `LiquidGL()` inside a `DOMContentLoaded` or `load` handler to avoid jank during critical rendering.
 - Extremely long documents can exceed GPU texture limits, causing memory or performance issues. Consider segmenting very long pages or reducing `scaleFactor` (see source).
 
 ---
 
-## Border-radius
+## Other
 
-LiquidGL automatically inherits the `border-radius` of the `target` element, ensuring the refraction respects rounded corners without any extra configuration.
+**Border-radius**
+
+> LiquidGL automatically inherits the `border-radius` of the `target` element, ensuring the refraction respects rounded corners without any extra configuration.
+
+**Content Visibility**
+
+> It is recommended to use `z-index: 3;` on the content inside your target element to make it sit on top of the lens. You can also combine this with `mix-blend-mode: difference;` for better legibility.
 
 ---
 
