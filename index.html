@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>liquidGlass Effect Demo</title>
+    <style>
+      :root {
+        --text-color: #333333;
+        --bg-color: #f0f0f0;
+        --secondary-text: rgba(0, 0, 0, 0.5);
+        scroll-behavior: auto;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        line-height: 1.5;
+      }
+
+      .main-content {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 30svh 20px;
+        text-align: center;
+      }
+
+      .headline {
+        font-size: 5rem;
+        font-weight: 700;
+        letter-spacing: -0.022em;
+        margin-bottom: 20px;
+      }
+
+      .sub-headline {
+        font-size: 1.5rem;
+        font-weight: 600;
+        max-width: 580px;
+        margin: 0 auto 40px auto;
+        color: var(--secondary-text);
+        line-height: 1.2;
+      }
+
+      .image-container {
+        padding: 40px 0;
+        overflow: clip;
+        position: relative;
+        z-index: 1;
+        transform: translate3d(0, 0, 0);
+        margin-bottom: 100px;
+        border-radius: 1.5vw;
+      }
+
+      @media (max-width: 768px) {
+        .image-container {
+          margin-bottom: 1rem;
+          border-radius: 2vw;
+        }
+        .headline {
+          font-size: 3rem;
+        }
+        .sub-headline {
+          font-size: 1.2rem;
+        }
+        .menu-anchor {
+          bottom: 1rem;
+        }
+        .info-columns {
+          flex-direction: column;
+          gap: 20px;
+        }
+        .presets-container {
+          flex-wrap: wrap;
+        }
+        .preset-option label {
+          border-radius: 2vw !important;
+          font-size: 12px !important;
+        }
+      }
+
+      .image-container img {
+        width: 100%;
+        height: auto;
+        border-radius: 24px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        will-change: transform;
+      }
+
+      /* --- Menu Styles --- */
+      .menu-anchor {
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        display: flex;
+        position: fixed;
+        inset: auto 0% 3rem;
+      }
+
+      .menu-link-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+        text-decoration: none;
+      }
+
+      .menu-wrap {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        gap: 1rem;
+        border-radius: 1.5vw;
+        justify-content: flex-start;
+        position: relative;
+        overflow: clip;
+        background: rgba(255, 255, 255, 0.1); /* Fallback */
+        backdrop-filter: blur(20px) saturate(180%); /* Basic blur for non-WebGL */
+        will-change: transform;
+      }
+
+      @media (max-width: 768px) {
+        .menu-wrap {
+          border-radius: 5vw;
+        }
+      }
+
+      .menu-item-stack {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .menu-logo-wrap,
+      .menu-items-wrap,
+      .menu-item-text {
+        z-index: 3;
+        mix-blend-mode: difference;
+      }
+
+      .menu-items-wrap {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+
+      .menu-item-text {
+        color: #b7b7b7;
+        font-weight: 700;
+        letter-spacing: -0.04rem;
+      }
+
+      .small-text-link {
+        font-size: 0.8rem;
+        color: #b7b7b7;
+        font-weight: 600;
+        letter-spacing: -0.02rem;
+      }
+
+      .menu-item {
+        padding: 0.5rem;
+        border-radius: 0.25vw;
+        justify-content: center;
+        align-items: center;
+        width: 2.25rem;
+        height: 2.25rem;
+        display: flex;
+        overflow: clip;
+      }
+
+      .menu-item-link {
+        display: block;
+      }
+
+      .menu-icon {
+        width: 24px;
+        height: 24px;
+        filter: invert(1);
+        opacity: 0.8;
+        transition: opacity 0.2s ease;
+      }
+
+      .menu-item-link:hover .menu-icon {
+        opacity: 1;
+      }
+
+      .menu-logo-wrap {
+        display: flex;
+        align-items: center;
+      }
+
+      .menu-logo {
+        height: 2.25rem;
+      }
+
+      [data-animate="slide-up"] {
+        opacity: 0;
+      }
+
+      .download-wrapper {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .download-link {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-decoration: none; /* remove underline from link */
+      }
+      .download-icon {
+        width: 0.75rem;
+        height: 0.75rem;
+      }
+      .version-text {
+        font-size: 0.75rem;
+        color: #b7b7b7;
+        letter-spacing: 0.02rem;
+        font-weight: 500;
+        mix-blend-mode: difference;
+      }
+      .disclaimer-text {
+        font-size: 0.8rem;
+        color: var(--secondary-text);
+        margin: 0 auto;
+        text-align: left;
+        line-height: 1.4;
+      }
+      .center-text {
+        text-align: center;
+        margin: 0 auto;
+        width: 100%;
+      }
+      .disclaimer-text.center-text {
+        text-align: center;
+        margin: 0 auto 40px auto;
+      }
+      .affiliation-info {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 40px;
+      }
+      .affiliation-info .disclaimer-text {
+        margin: 0;
+      }
+      .info-icon {
+        width: 0.75rem;
+        height: 0.75rem;
+      }
+      .info-columns {
+        display: flex;
+        gap: 40px;
+        margin: 80px auto 0 auto;
+      }
+      .lil-gui {
+        --number-color: #f0f0f0;
+      }
+      .presets-container {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin-bottom: 40px;
+      }
+
+      .preset-option input[type="radio"] {
+        display: none;
+      }
+
+      .preset-option label {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border: 1px solid #b7b7b7;
+        color: #b7b7b7;
+        border-radius: 0.5vw;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-weight: 600;
+        font-size: 13px;
+        position: relative; /* For masking */
+        overflow: hidden; /* For masking */
+      }
+
+      .preset-option .button-text {
+        display: block;
+        transform: translateY(120%);
+      }
+
+      .preset-option input[type="radio"]:checked + label {
+        color: #333333;
+        border-color: #333333;
+      }
+
+      .preset-option label:hover {
+        color: #333333;
+        border-color: #333333;
+      }
+
+      .split {
+        visibility: hidden;
+      }
+
+      .ripples {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        filter: invert(1);
+        opacity: 0.3;
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/SplitText.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery.ripples@0.6.3/dist/jquery.ripples.min.js"></script>
+  </head>
+  <body>
+    <div class="ripples"></div>
+    <div class="main-content">
+      <h1 class="headline split">liquidGlass</h1>
+      <p class="sub-headline split">
+        Inspired by Apple's upcoming Liquid Glass, this lightweight script uses
+        WebGL to create a beautiful, transparent, refractive glass effect on any
+        element.
+      </p>
+      <div class="center-text">
+        <div class="affiliation-info">
+          <img src="/assets/info-icon.svg" alt="Info" class="info-icon" />
+          <p class="disclaimer-text">Not affiliated with Apple Inc.</p>
+        </div>
+      </div>
+
+      <div class="presets-container">
+        <div class="preset-option">
+          <input
+            type="radio"
+            id="preset-default"
+            name="preset"
+            value="DEFAULT"
+            checked
+          />
+          <label for="preset-default"
+            ><span class="button-text">DEFAULT</span></label
+          >
+        </div>
+        <div class="preset-option">
+          <input type="radio" id="preset-alien" name="preset" value="ALIEN" />
+          <label for="preset-alien"
+            ><span class="button-text">ALIEN</span></label
+          >
+        </div>
+        <div class="preset-option">
+          <input type="radio" id="preset-pulse" name="preset" value="PULSE" />
+          <label for="preset-pulse"
+            ><span class="button-text">PULSE</span></label
+          >
+        </div>
+        <div class="preset-option">
+          <input type="radio" id="preset-frost" name="preset" value="FROST" />
+          <label for="preset-frost"
+            ><span class="button-text">FROST</span></label
+          >
+        </div>
+        <div class="preset-option">
+          <input type="radio" id="preset-edge" name="preset" value="EDGE" />
+          <label for="preset-edge"><span class="button-text">EDGE</span></label>
+        </div>
+      </div>
+
+      <div class="image-container">
+        <img
+          src="/assets/liquid-bkg-_0000_Comp-33.webp"
+          alt="Abstract colorful wallpaper"
+        />
+      </div>
+
+      <div class="image-container">
+        <img
+          src="/assets/liquid-bkg-_0001_Comp-183.webp"
+          alt="Abstract colorful wallpaper"
+        />
+      </div>
+
+      <div class="image-container">
+        <img
+          src="/assets/liquid-bkg-_0002_Comp-163.webp"
+          alt="Abstract colorful wallpaper"
+        />
+      </div>
+
+      <div class="image-container">
+        <img
+          src="/assets/liquid-bkg-_0003_Comp-151.webp"
+          alt="Abstract colorful wallpaper"
+        />
+      </div>
+
+      <div class="image-container">
+        <img
+          src="/assets/liquid-bkg-_0004_Comp-13.webp"
+          alt="Abstract colorful wallpaper"
+        />
+      </div>
+
+      <div class="info-columns">
+        <p class="disclaimer-text">
+          <strong>Disclaimer:</strong> liquidGlass is an independent project
+          developed and maintained by NaughtyDuk, a digital consultancy and
+          design studio based in Manchester, UK. This script is provided free
+          for personal and commercial use. It is not affiliated with, sponsored,
+          or endorsed by Apple Inc. The name "liquidGlass" is inspired by design
+          trends and does not imply any connection to Apple's "Liquid Glass"
+          features announced for Apple's upcoming OS26.
+        </p>
+        <p class="disclaimer-text">
+          <strong>Limitations:</strong> Due to performance considerations, the
+          liquidGlass effect cannot support real-time refraction of moving
+          content. The effect works by taking a high-resolution snapshot of the
+          page background when liquidGlass is first initialised. Any elements
+          that are not visible when this snapshot is taken will not appear in
+          the refraction effect. The effect requires a browser with WebGL
+          support.
+        </p>
+      </div>
+    </div>
+
+    <!-- The menu element that will have the glass effect applied -->
+    <div class="menu-anchor">
+      <a
+        href="https://github.com/NaughtyDuk/liquidGlass"
+        style="text-decoration: none"
+        target="_blank"
+      >
+        <div class="menu-wrap">
+          <div class="menu-logo-wrap">
+            <img
+              src="https://cdn.prod.website-files.com/683cfe5728992d2318dfecd3/6843df24213921eaac90bcda_67a3d1a10eb7305c70724387_logo.svg"
+              loading="lazy"
+              alt="NaughtyDuk©"
+              class="menu-logo"
+            />
+          </div>
+          <div class="menu-items-wrap">
+            <div class="menu-item-stack">
+              <p class="menu-item-text">liquidGlass by NaughtyDuk©</p>
+              <div class="download-wrapper">
+                <div class="download-link">
+                  <img
+                    src="/assets/download-icon.svg"
+                    alt="Download"
+                    class="download-icon"
+                  />
+                  <p class="small-text-link">Download</p>
+                </div>
+                <p class="version-text">v1.0.0</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/scripts/html2canvas.js"></script>
+    <script src="/scripts/liquid.js"></script>
+    <script>
+      let glassEffect; // Declare in a higher scope to be accessible across event listeners
+
+      document.addEventListener("DOMContentLoaded", () => {
+        initializeLiquidGlass(); // Call immediately on DOM ready
+
+        // GSAP SplitText Animation
+        gsap.registerPlugin(SplitText);
+
+        document.fonts.ready.then(() => {
+          gsap.set(".split", { visibility: "visible" });
+
+          let split = SplitText.create(".split", {
+            type: "lines",
+            linesClass: "line",
+            mask: "lines",
+            onSplit: (self) => {
+              gsap.from(self.lines, {
+                duration: 0.8,
+                yPercent: 100,
+                stagger: 0.1,
+                ease: "expo.out",
+              });
+            },
+          });
+
+          // Animate in the preset buttons' text
+          gsap.to(".button-text", {
+            y: 0,
+            delay: 0.6, // Stagger after headline/subheadline
+            duration: 0.8,
+            stagger: 0.15,
+            ease: "expo.out",
+          });
+
+          // Ripples
+          $(".ripples").each(function () {
+            const $this = $(this);
+            $this.ripples({
+              resolution: 512,
+              dropRadius: 20,
+              perturbance: 0.04,
+              interactive: true,
+            });
+          });
+        });
+
+        // A function to initialize the glass effect and its controls
+        function initializeLiquidGlass() {
+          // Initialize the Liquid Glass effect on our menu
+          glassEffect = liquidGlass({
+            target: ".menu-wrap",
+            refraction: 0,
+            bevelDepth: 0.052,
+            bevelWidth: 0.211,
+            frost: 2,
+            shadow: true,
+          });
+
+          // Setup lil-gui controls
+          const gui = new lil.GUI();
+          const glassFolder = gui.addFolder("liquidGlass Effect");
+          glassFolder
+            .add(glassEffect.options, "refraction", 0, 0.1, 0.001)
+            .name("Refraction");
+          glassFolder
+            .add(glassEffect.options, "bevelDepth", 0, 0.2, 0.001)
+            .name("Bevel Depth");
+          glassFolder
+            .add(glassEffect.options, "bevelWidth", 0, 0.5, 0.001)
+            .name("Bevel Width");
+          glassFolder
+            .add(glassEffect.options, "frost", 0, 10, 0.1)
+            .name("Frost");
+          glassFolder.add(glassEffect.options, "specular").name("Specular");
+          glassFolder
+            .add(glassEffect.options, "shadow")
+            .name("Enable Shadow")
+            .onChange((value) => {
+              glassEffect.setShadow(value);
+            });
+          glassFolder.close();
+
+          const presets = {
+            DEFAULT: {
+              refraction: 0,
+              bevelDepth: 0.052,
+              bevelWidth: 0.211,
+              frost: 2,
+              shadow: true,
+              specular: true,
+            },
+            ALIEN: {
+              refraction: 0.073,
+              bevelDepth: 0.2,
+              bevelWidth: 0.156,
+              frost: 2,
+              shadow: true,
+              specular: false,
+            },
+            PULSE: {
+              refraction: 0.03,
+              bevelDepth: 0,
+              bevelWidth: 0.273,
+              frost: 0,
+              shadow: false,
+              specular: false,
+            },
+            FROST: {
+              refraction: 0,
+              bevelDepth: 0.035,
+              bevelWidth: 0.119,
+              frost: 0.9,
+              shadow: true,
+              specular: true,
+            },
+            EDGE: {
+              refraction: 0.047,
+              bevelDepth: 0.136,
+              bevelWidth: 0.076,
+              frost: 2,
+              shadow: true,
+              specular: false,
+            },
+          };
+
+          document
+            .querySelectorAll('.preset-option input[name="preset"]')
+            .forEach((radio) => {
+              radio.addEventListener("change", (event) => {
+                const presetName = event.target.value;
+                const newSettings = presets[presetName];
+
+                if (newSettings) {
+                  // Update the options object. lil-gui is bound to this object and
+                  // will update its controller values automatically.
+                  glassEffect.options.refraction = newSettings.refraction;
+                  glassEffect.options.bevelDepth = newSettings.bevelDepth;
+                  glassEffect.options.bevelWidth = newSettings.bevelWidth;
+                  glassEffect.options.frost = newSettings.frost;
+                  glassEffect.options.shadow = newSettings.shadow;
+                  glassEffect.options.specular = newSettings.specular;
+
+                  // The shadow property has a custom setter function that needs to be called.
+                  glassEffect.setShadow(newSettings.shadow);
+
+                  // The lil-gui checkbox for shadow also needs to be updated.
+                  glassFolder.controllers.forEach((c) => c.updateDisplay());
+                }
+              });
+            });
+        }
+
+        window.addEventListener("load", function () {
+          // Lenis & GSAP ScrollTrigger integration
+          const lenis = new Lenis();
+
+          lenis.on("scroll", ScrollTrigger.update);
+
+          gsap.ticker.add((time) => {
+            lenis.raf(time * 1000);
+            if (glassEffect) {
+              glassEffect.render(); // Render in sync with Lenis
+            }
+          });
+
+          gsap.ticker.lagSmoothing(0);
+
+          // Responsive GSAP Parallax
+          const mm = gsap.matchMedia();
+
+          mm.add(
+            {
+              // Desktop
+              isDesktop: `(min-width: 769px)`,
+              // Mobile
+              isMobile: `(max-width: 768px)`,
+            },
+            (context) => {
+              const { isMobile } = context.conditions;
+
+              gsap.utils.toArray(".image-container").forEach((container) => {
+                const img = container.querySelector("img");
+
+                gsap.set(container, { height: container.offsetHeight });
+
+                gsap.fromTo(
+                  img,
+                  {
+                    yPercent: 20,
+                    scale: isMobile ? 1.85 : 1.5,
+                    transformOrigin: "center center",
+                  },
+                  {
+                    yPercent: -20,
+                    ease: "none",
+                    force3D: true,
+                    scrollTrigger: {
+                      trigger: container,
+                      scrub: true,
+                    },
+                  }
+                );
+              });
+            }
+          );
+        });
+      });
+    </script>
+  </body>
+</html>
