@@ -24,7 +24,7 @@ Add **both** of the following scripts before you initialise LiquidGL (normally a
 ></script>
 
 <!-- liquid.js – the library itself -->
-<script src="/scripts/liquid.js" defer></script>
+<script src="/scripts/liquidGL.js" defer></script>
 ```
 
 > `html2canvas` provides the high-resolution snapshot of the page background that LiquidGL refracts. The library will throw if either dependency is missing.
