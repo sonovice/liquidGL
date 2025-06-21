@@ -136,8 +136,6 @@
         { passive: true }
       );
 
-      // We only recapture on an explicit resize now.
-
       this.initGL();
       this.resize();
 
@@ -147,27 +145,15 @@
         );
         return;
       }
-      // Kick-off the initial capture and expose a promise we can await.
-      // Consumers can hook into the lifecycle with an `on.init` callback in
-      // the options object:
-      //
-      // liquidGlass({
-      //   on: {
-      //     init(instance) { /* runs after first capture */ }
-      //   }
-      // });
+
       const firstCapture = this.captureFullPage();
 
-      // Expose the promise for external use and fire the optional callback
-      // once the effect is fully initialised.
       this.initPromise = firstCapture.then(() => {
         if (
           this.options &&
           this.options.on &&
           typeof this.options.on.init === "function"
         ) {
-          // Call the handler with `this` (the LiquidGlass instance) as both
-          // context and first argument for convenience.
           this.options.on.init.call(this, this);
         }
       });
@@ -362,11 +348,9 @@
       const borderRadius = parseFloat(style.borderRadius);
       this.radius = borderRadius * dpr;
 
-      // Also update our cached position on resize.
       this.initialX = rect.left;
       this.initialY = rect.top;
 
-      // Recalculate UV scale so the sampled region matches the new element size.
       if (this.textureWidth && this.textureHeight) {
         const wUV = (rect.width * this.scaleFactor) / this.textureWidth;
         const hUV = (rect.height * this.scaleFactor) / this.textureHeight;
@@ -381,17 +365,6 @@
     async captureFullPage() {
       const rect = this.el.getBoundingClientRect();
 
-      // --------------------------------------------------------------
-      // html2canvas renders the DOM exactly as it exists in the current
-      // viewport—including any scroll offset.  If the page is initially
-      // loaded half-way down, that means the entire document is translated
-      // upwards by that offset inside the snapshot.  Subsequent coordinate
-      // mapping (which assumes an origin at scroll 0) then yields colour /
-      // contrast discrepancies.  To guarantee a uniform capture space we
-      // momentarily scroll to the very top, take the snapshot, and then
-      // restore the user's original scroll position.
-      // --------------------------------------------------------------
-
       const prevScrollX = window.scrollX;
       const prevScrollY = window.scrollY;
 
@@ -400,13 +373,9 @@
         // Ensure layout has updated before continuing.
         await new Promise((r) => requestAnimationFrame(r));
       }
-      // Temporarily hide our overlay so it isn't captured.
+
       this.canvas.style.visibility = "hidden";
 
-      // To prevent the element itself from being captured in the background, we add
-      // a temporary attribute to it. The `onclone` callback for html2canvas will
-      // then find and remove this element from the cloned document before the
-      // "screenshot" is taken.
       const tempAttr = `data-liquid-ignore`;
       this.el.setAttribute(tempAttr, "");
 
@@ -430,13 +399,11 @@
         console.warn("html2canvas failed", e);
       } finally {
         this.canvas.style.visibility = "visible";
-        // Always remove the temporary attribute
         this.el.removeAttribute(tempAttr);
       }
 
       if (!viewportCanvas) return;
 
-      // Restore the user's scroll position so the page appears unaffected.
       if (prevScrollY !== 0 || prevScrollX !== 0) {
         window.scrollTo({
           top: prevScrollY,
@@ -445,18 +412,15 @@
         });
       }
 
-      // The full-page canvas may exceed MAX_TEXTURE_SIZE in width; so we will canvas.scale to ensure inside. Already scaled.
       this.updateTexture(viewportCanvas);
       this.fadeIn();
 
-      // Compute UV scale of the menu within the big texture, and store texture dims.
       this.textureWidth = viewportCanvas.width;
       this.textureHeight = viewportCanvas.height;
       const wUV = (rect.width * this.scaleFactor) / this.textureWidth;
       const hUV = (rect.height * this.scaleFactor) / this.textureHeight;
       this.uvScale = [wUV, hUV];
 
-      // Cache the initial element position relative to the document.
       this.initialX = rect.left;
       this.initialY = rect.top;
     }
@@ -466,7 +430,6 @@
       const gl = this.gl;
       if (!this.texture) this.texture = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, this.texture);
-      // Keep original orientation (top-left origin) so UV mapping aligns.
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
       gl.texImage2D(
         gl.TEXTURE_2D,
@@ -496,12 +459,6 @@
       gl.uniform2f(this.uRes, this.canvas.width, this.canvas.height);
 
       if (this.uBounds && this.uvScale[0] > 0) {
-        // For robust correctness (at the cost of a tiny bit of extra work), we
-        // query the element's position in the document every frame.  This
-        // guarantees the sampled region always lines up with whatever is
-        // currently behind the fixed element, even if the page is initially
-        // loaded at an arbitrary scroll position, or layout shifts occur.
-
         const rect = this.el.getBoundingClientRect();
         const docX = rect.left + window.scrollX;
         const docY = rect.top + window.scrollY;
@@ -536,7 +493,6 @@
       frost: 0,
       shadow: true,
       specular: true,
-      // Event hooks mirroring Swiper/Splide style: `{ on: { init() {} } }`.
       on: {},
     };
     const options = { ...defaults, ...userOptions };
