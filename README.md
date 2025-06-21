@@ -29,7 +29,7 @@ Add **both** of the following scripts anywhere before you initialise LiquidGlass
 <script>
   document.addEventListener("DOMContentLoaded", () => {
     liquidGlass({
-      target: ".menu-wrap", // CSS selector for the element to glass-ify
+      target: ".selector", // CSS selector for the element to glass-ify
       refraction: 0.01, // Base refraction strength (0–1)
       bevelDepth: 0.08, // Intensity of the edge bevel (0–1)
       bevelWidth: 0.15, // Width of the bevel as a proportion of the element (0–1)
@@ -39,6 +39,7 @@ Add **both** of the following scripts anywhere before you initialise LiquidGlass
       on: {
         init(instance) {
           // Callback fired when the first frame has rendered
+          // .on is useful to set initial animation states of below the fold elements, as the page content has to be visible on load to make it available to WebGL, before hiding it for example with gsap.set opacity 0, to then be animated in on scroll.
           console.log("LiquidGlass ready!", instance);
         },
       },
@@ -47,20 +48,30 @@ Add **both** of the following scripts anywhere before you initialise LiquidGlass
 </script>
 ```
 
-### Option reference
+### Parameters
 
-| Option       | Type     | Default      | Description                                                            |
-| ------------ | -------- | ------------ | ---------------------------------------------------------------------- |
-| `target`     | string   | `.menu-wrap` | CSS selector of the element that should receive the effect.            |
-| `refraction` | number   | `0.01`       | Base refraction offset applied across the pane.                        |
-| `bevelDepth` | number   | `0.08`       | Additional refraction applied on the very edge to simulate depth.      |
-| `bevelWidth` | number   | `0.15`       | Width of the bevel zone, expressed as a fraction of the shortest side. |
-| `frost`      | number   | `0`          | Size of the blur kernel in **pixels** for a frosted glass look.        |
-| `shadow`     | boolean  | `true`       | Toggles a subtle drop-shadow under the pane.                           |
-| `specular`   | boolean  | `true`       | Enables animated specular highlights that move with time.              |
-| `on.init`    | function | `—`          | Runs once the first full render completes. Receives the instance.      |
+| Option       | Type     | Default     | Description                                                            |
+| ------------ | -------- | ----------- | ---------------------------------------------------------------------- |
+| `target`     | string   | `.selector` | CSS selector of the element that should receive the effect.            |
+| `refraction` | number   | `0.01`      | Base refraction offset applied across the pane.                        |
+| `bevelDepth` | number   | `0.08`      | Additional refraction applied on the very edge to simulate depth.      |
+| `bevelWidth` | number   | `0.15`      | Width of the bevel zone, expressed as a fraction of the shortest side. |
+| `frost`      | number   | `0`         | Size of the blur kernel in **pixels** for a frosted glass look.        |
+| `shadow`     | boolean  | `true`      | Toggles a subtle drop-shadow under the pane.                           |
+| `specular`   | boolean  | `true`      | Enables animated specular highlights that move with time.              |
+| `on.init`    | function | `—`         | Runs once the first full render completes. Receives the instance.      |
 
 All options are optional—only `target` is required.
+
+### Presets
+
+Below are some ready-made configurations you can copy-paste. Feel free to tweak values to suit your design.
+
+| Name              | Settings                                                                                             | Purpose                                               |
+| ----------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| **Default**       | `{ refraction: 0.01, bevelDepth: 0.08, bevelWidth: 0.15, frost: 0, shadow: true, specular: true }`   | Balanced clarity with subtle bevel and highlights.    |
+| **Frosted glass** | `{ refraction: 0.015, bevelDepth: 0.04, bevelWidth: 0.18, frost: 3, shadow: true, specular: false }` | Softer, heavily diffused look—ideal over busy images. |
+| **Minimal pane**  | `{ refraction: 0, bevelDepth: 0.05, bevelWidth: 0.12, frost: 0, shadow: false, specular: false }`    | Almost flat sheet of glass without extras.            |
 
 ---
 
