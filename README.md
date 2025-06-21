@@ -1,5 +1,9 @@
 # LiquidGlass – Ultra-light glassmorphism for the web
 
+<video src="assets/liquidGlass-promo-video.mp4" autoplay loop muted playsinline width="100%" style="display:block; margin:0 auto;">
+  Sorry, your browser doesn't support embedded videos.
+</video>
+
 LiquidGlass turns any fixed-position element into a perfectly refracted, glossy "glass pane" rendered in WebGL.
 
 ## Overview
