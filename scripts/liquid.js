@@ -1,5 +1,5 @@
 /*
- * Liquid Glass Effect – transparent, glossy refraction for the .menu-wrap element.
+ * LiquidGL – Ultra-light glassmorphism for the web
  * -----------------------------------------------------------------------------
  * Requirements:   WebGL + html2canvas
  * Author:         NaughtyDuk© - https://liquid.naughtyduk.com
@@ -61,7 +61,7 @@
   /* --------------------------------------------------
    *  Main class
    * ------------------------------------------------*/
-  class LiquidGlass {
+  class LiquidGL {
     constructor(container, options) {
       this.el = container;
       this.options = options;
@@ -141,7 +141,7 @@
 
       if (typeof window.html2canvas === "undefined") {
         console.error(
-          "liquidGlass: html2canvas.js is required. Please include it manually."
+          "LiquidGL: html2canvas.js is required. Please include it manually."
         );
         return;
       }
@@ -484,7 +484,7 @@
   /* --------------------------------------------------
    *  Public API
    * ------------------------------------------------*/
-  window.liquidGlass = function (userOptions = {}) {
+  window.LiquidGL = function (userOptions = {}) {
     const defaults = {
       target: ".menu-wrap",
       refraction: 0.01,
@@ -499,20 +499,18 @@
 
     const targetEl = document.querySelector(options.target);
     if (!targetEl) {
+      console.warn(`LiquidGL: Target element "${options.target}" not found.`);
+      return;
+    }
+
+    if (targetEl._LiquidGL) {
       console.warn(
-        `liquidGlass: Target element "${options.target}" not found.`
+        `LiquidGL: Already initialized on target element "${options.target}".`
       );
       return;
     }
 
-    if (targetEl._liquidGlass) {
-      console.warn(
-        `liquidGlass: Already initialized on target element "${options.target}".`
-      );
-      return;
-    }
-
-    targetEl._liquidGlass = new LiquidGlass(targetEl, options);
-    return targetEl._liquidGlass;
+    targetEl._LiquidGL = new LiquidGL(targetEl, options);
+    return targetEl._LiquidGL;
   };
 })();

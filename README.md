@@ -1,20 +1,20 @@
-# LiquidGlass – Ultra-light glassmorphism for the web
+# LiquidGL – Ultra-light glassmorphism for the web
 
-<img src="/assets/liquidGlass-promo.gif" alt="liquidGlass" style="width: 100%"/>
+<img src="/assets/liquidGlass-promo.gif" alt="LiquidGL" style="width: 100%"/>
 
-LiquidGlass turns any fixed-position element into a perfectly refracted, glossy "glass pane" rendered in WebGL.
+LiquidGL turns any fixed-position element into a perfectly refracted, glossy "glass pane" rendered in WebGL.
 
 <a href="https://liquid.naughtyduk.com"><strong>DEMO</strong></a>
 
 ## Overview
 
-`liquidGlass` recreates Apple's upcoming "Liquid Glass" aesthetic in the browser with an ultra-light WebGL shader. Because WebGL cannot read live pixels for security reasons, the library takes a single high-resolution snapshot of the page when you call `liquidGlass()`. This keeps performance smooth, but it also means the pane can't refract content that changes afterwards, such as playing video or animations. Your page can still have video and animations, they just won't be refracted through the lens.
+`LiquidGL` recreates Apple's upcoming "Liquid Glass" aesthetic in the browser with an ultra-light WebGL shader. Because WebGL cannot read live pixels for security reasons, the library takes a single high-resolution snapshot of the page when you call `LiquidGL()`. This keeps performance smooth, but it also means the pane can't refract content that changes afterwards, such as playing video or animations. Your page can still have video and animations, they just won't be refracted through the lens.
 
 ---
 
 ## Prerequisites
 
-Add **both** of the following scripts before you initialise LiquidGlass (normally at the end of the `<body>`):
+Add **both** of the following scripts before you initialise LiquidGL (normally at the end of the `<body>`):
 
 ```html
 <!-- html2canvas – DOM snapshotter (required) -->
@@ -27,7 +27,7 @@ Add **both** of the following scripts before you initialise LiquidGlass (normall
 <script src="/scripts/liquid.js" defer></script>
 ```
 
-> `html2canvas` provides the high-resolution snapshot of the page background that LiquidGlass refracts. The library will throw if either dependency is missing.
+> `html2canvas` provides the high-resolution snapshot of the page background that LiquidGL refracts. The library will throw if either dependency is missing.
 
 ---
 
@@ -36,7 +36,7 @@ Add **both** of the following scripts before you initialise LiquidGlass (normall
 ```html
 <script>
   document.addEventListener("DOMContentLoaded", () => {
-    liquidGlass({
+    LiquidGL({
       target: ".selector", // CSS selector for the element to glass-ify
       refraction: 0.01, // Base refraction strength (0–1)
       bevelDepth: 0.08, // Intensity of the edge bevel (0–1)
@@ -46,12 +46,12 @@ Add **both** of the following scripts before you initialise LiquidGlass (normall
       specular: true, // Animated light highlights (slightly more GPU)
       on: {
         init(instance) {
-          // The `init` callback fires once LiquidGlass has taken its snapshot
+          // The `init` callback fires once LiquidGL has taken its snapshot
           // and rendered the first frame. It's the ideal place to hide or
           // prepare elements for reveal animations (e.g. with GSAP, ScrollTrigger)
           // because it ensures the content is visible to the snapshot before
           // you hide it from the user.
-          console.log("LiquidGlass ready!", instance);
+          console.log("LiquidGL ready!", instance);
         },
       },
     });
@@ -91,15 +91,15 @@ Below are some ready-made configurations you can copy-paste. Feel free to tweak 
 ## Limitations
 
 - Animated or video content **behind** the pane is not re-captured in real-time; the snapshot is static for performance reasons.
-- All page content must be present (visible in the DOM) **before** you initialise LiquidGlass. Deferred/scroll-triggered animations should be started **after** `on.init`.
-- The initial capture is synchronous and may block the main thread momentarily; call `liquidGlass()` inside a `DOMContentLoaded` or `load` handler to avoid jank during critical rendering.
+- All page content must be present (visible in the DOM) **before** you initialise LiquidGL. Deferred/scroll-triggered animations should be started **after** `on.init`.
+- The initial capture is synchronous and may block the main thread momentarily; call `LiquidGL()` inside a `DOMContentLoaded` or `load` handler to avoid jank during critical rendering.
 - Extremely long documents can exceed GPU texture limits, causing memory or performance issues. Consider segmenting very long pages or reducing `scaleFactor` (see source).
 
 ---
 
 ## Border-radius
 
-LiquidGlass automatically inherits the `border-radius` of the `target` element, ensuring the refraction respects rounded corners without any extra configuration.
+LiquidGL automatically inherits the `border-radius` of the `target` element, ensuring the refraction respects rounded corners without any extra configuration.
 
 ---
 

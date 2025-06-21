@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>liquidGlass WebGL - NaughtyDuk©</title>
+    <title>LiquidGL WebGL - NaughtyDuk©</title>
     <link rel="icon" href="/assets/favicon.ico" />
     <style>
       :root {
@@ -331,7 +331,7 @@
   <body>
     <div class="ripples"></div>
     <div class="main-content">
-      <h1 class="headline split">liquidGlass</h1>
+      <h1 class="headline split">LiquidGL</h1>
       <p class="sub-headline split">
         Inspired by Apple's upcoming Liquid Glass, this lightweight script uses
         WebGL to create a beautiful, transparent, refractive glass effect.
@@ -417,24 +417,24 @@
 
       <div class="info-columns">
         <p class="disclaimer-text">
-          <strong>Disclaimer:</strong> liquidGlass is an independent project
+          <strong>Disclaimer:</strong> LiquidGL is an independent project
           developed and maintained by NaughtyDuk, a digital consultancy and
           design studio based in Manchester, UK. This script is provided free
           for personal and commercial use. It is not affiliated with, sponsored,
-          or endorsed by Apple Inc. The name "liquidGlass" is inspired by design
+          or endorsed by Apple Inc. The name "LiquidGL" is inspired by design
           trends and does not imply any connection to Apple's "Liquid Glass"
           features announced for Apple's upcoming OS26.
         </p>
         <p class="disclaimer-text">
           <strong>Limitations:</strong> Due to performance considerations, the
-          liquidGlass effect cannot support real-time refraction of moving
+          LiquidGL effect cannot support real-time refraction of moving
           content i.e video. The effect relies on the page content being visible
           on load as it takes a high-resolution snapshot of the page background
-          when liquidGlass is first initialised. You can make the effect
+          when LiquidGL is first initialised. You can make the effect
           compatible with scroll animations by making all content visible on
           load and then setting initial animation states in the on.init()
           function. You should set above the fold animations i.e intro animations to run before
-          initialising liquidGlass.</br></br><strong>This
+          initialising LiquidGL.</br></br><strong>This
           effect requires a browser with WebGL support.</strong>
         </p>
       </div>
@@ -443,7 +443,7 @@
     <!-- The menu element that will have the glass effect applied -->
     <div class="menu-anchor">
       <a
-        href="https://github.com/NaughtyDuk/liquidGlass"
+        href="https://github.com/naughtyduk/liquidGL"
         style="text-decoration: none"
         target="_blank"
       >
@@ -458,7 +458,7 @@
           </div>
           <div class="menu-items-wrap">
             <div class="menu-item-stack">
-              <p class="menu-item-text">liquidGlass by NaughtyDuk©</p>
+              <p class="menu-item-text">LiquidGL by NaughtyDuk©</p>
               <div class="download-wrapper">
                 <div class="download-link">
                   <img
@@ -483,7 +483,7 @@
       let glassEffect; // Declare in a higher scope to be accessible across event listeners
 
       document.addEventListener("DOMContentLoaded", () => {
-        initializeLiquidGlass(); // Call immediately on DOM ready
+        initializeLiquidGL(); // Call immediately on DOM ready
 
         // GSAP SplitText Animation
         gsap.registerPlugin(SplitText);
@@ -527,12 +527,12 @@
         });
 
         // A function to initialize the glass effect and its controls
-        function initializeLiquidGlass() {
+        function initializeLiquidGL() {
           // Will hold the GUI objects once the effect is ready
           let gui, glassFolder;
 
           // Initialize the Liquid Glass effect on our menu
-          glassEffect = liquidGlass({
+          glassEffect = LiquidGL({
             target: ".menu-wrap",
             refraction: 0,
             bevelDepth: 0.052,
@@ -541,9 +541,9 @@
             shadow: true,
             on: {
               init(instance) {
-                // Setup lil-gui controls only after liquidGlass is fully initialised
+                // Setup lil-gui controls only after LiquidGL is fully initialised
                 gui = new lil.GUI();
-                glassFolder = gui.addFolder("liquidGlass Effect");
+                glassFolder = gui.addFolder("LiquidGL Effect");
 
                 glassFolder
                   .add(instance.options, "refraction", 0, 0.1, 0.001)
@@ -567,7 +567,7 @@
                     instance.setShadow(value);
                   });
                 glassFolder.close();
-                console.log("liquidGlass initialised");
+                console.log("LiquidGL initialised");
               },
             },
           });
