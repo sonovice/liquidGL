@@ -659,44 +659,6 @@
 
           gsap.ticker.lagSmoothing(0);
 
-          // Responsive GSAP Parallax
-          const mm = gsap.matchMedia();
-
-          mm.add(
-            {
-              // Desktop
-              isDesktop: `(min-width: 769px)`,
-              // Mobile
-              isMobile: `(max-width: 768px)`,
-            },
-            (context) => {
-              const { isMobile } = context.conditions;
-
-              gsap.utils.toArray(".image-container").forEach((container) => {
-                const img = container.querySelector("img");
-
-                gsap.set(container, { height: container.offsetHeight });
-
-                gsap.fromTo(
-                  img,
-                  {
-                    yPercent: 20,
-                    scale: isMobile ? 1.85 : 1.5,
-                    transformOrigin: "center center",
-                  },
-                  {
-                    yPercent: -20,
-                    ease: "none",
-                    force3D: true,
-                    scrollTrigger: {
-                      trigger: container,
-                      scrub: true,
-                    },
-                  }
-                );
-              });
-            }
-          );
         });
       });
     </script>

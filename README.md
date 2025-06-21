@@ -59,6 +59,32 @@ Add **both** of the following scripts before you initialise LiquidGL (normally a
 </script>
 ```
 
+---
+
+## Optionally use with Lenis/GSAP
+
+```html
+<script>
+  window.addEventListener("load", function () {
+    // Lenis & GSAP ScrollTrigger integration
+    const lenis = new Lenis();
+
+    lenis.on("scroll", ScrollTrigger.update);
+
+    gsap.ticker.add((time) => {
+      lenis.raf(time * 1000);
+      if (glassEffect) {
+        glassEffect.render(); // Render in sync with Lenis
+      }
+    });
+
+    gsap.ticker.lagSmoothing(0);
+  });
+</script>
+```
+
+> Don't forget to include Lenis and GSAP before calling them in the load event.
+
 ### Parameters
 
 | Option       | Type     | Default     | Description                                                            |
