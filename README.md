@@ -8,13 +8,13 @@ LiquidGlass turns any fixed-position element into a perfectly refracted, glossy 
 
 ## Overview
 
-`liquidGlass` recreates Apple's upcoming "Liquid Glass" aesthetic in the browser with an ultra-light WebGL shader. Because WebGL cannot read live pixels for security reasons, the library takes a single high-resolution snapshot of the page when you call `liquidGlass()`. This keeps performance smooth, but it also means the pane can't refract content that changes afterwards—such as playing video or animations. Your page can still have video and animations, they just won't be reffracted through the lens.
+`liquidGlass` recreates Apple's upcoming "Liquid Glass" aesthetic in the browser with an ultra-light WebGL shader. Because WebGL cannot read live pixels for security reasons, the library takes a single high-resolution snapshot of the page when you call `liquidGlass()`. This keeps performance smooth, but it also means the pane can't refract content that changes afterwards, such as playing video or animations. Your page can still have video and animations, they just won't be refracted through the lens.
 
 ---
 
 ## Prerequisites
 
-Add **both** of the following scripts anywhere before you initialise LiquidGlass (normally at the end of the `<body>`):
+Add **both** of the following scripts before you initialise LiquidGlass (normally at the end of the `<body>`):
 
 ```html
 <!-- html2canvas – DOM snapshotter (required) -->
@@ -46,8 +46,11 @@ Add **both** of the following scripts anywhere before you initialise LiquidGlass
       specular: true, // Animated light highlights (slightly more GPU)
       on: {
         init(instance) {
-          // Callback fired when the first frame has rendered
-          // .on is useful to set initial animation states of below the fold elements, as the page content has to be visible on load to make it available to WebGL, before hiding it for example with gsap.set opacity 0, to then be animated in on scroll.
+          // The `init` callback fires once LiquidGlass has taken its snapshot
+          // and rendered the first frame. It's the ideal place to hide or
+          // prepare elements for reveal animations (e.g. with GSAP, ScrollTrigger)
+          // because it ensures the content is visible to the snapshot before
+          // you hide it from the user.
           console.log("LiquidGlass ready!", instance);
         },
       },
@@ -96,7 +99,7 @@ Below are some ready-made configurations you can copy-paste. Feel free to tweak 
 
 ## Border-radius
 
-LiquidGlass automatically inherits the `border-radius` of the target element, ensuring the refraction respects rounded corners without any extra configuration.
+LiquidGlass automatically inherits the `border-radius` of the `target` element, ensuring the refraction respects rounded corners without any extra configuration.
 
 ---
 
