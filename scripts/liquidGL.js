@@ -77,10 +77,15 @@
           ? "relative"
           : this.el.style.position;
       this.el.appendChild(this.canvas);
-      this.gl = this.canvas.getContext("webgl", {
-        alpha: true,
-        premultipliedAlpha: false,
-      });
+      // Try to obtain a WebGL context using a cascading fallback strategy so
+      // that we cover quirks across mobile browsers (e.g. some expose only
+      // WebGL2, others still rely on the historical "experimental-webgl"
+      // context name). The very first successful call will be used.
+      const contextAttributes = { alpha: true, premultipliedAlpha: true };
+      this.gl =
+        this.canvas.getContext("webgl2", contextAttributes) ||
+        this.canvas.getContext("webgl", contextAttributes) ||
+        this.canvas.getContext("experimental-webgl", contextAttributes);
       if (!this.gl) {
         console.warn("WebGL not available – skipping liquid glass");
         this.canvas.remove();
@@ -200,7 +205,7 @@
               `;
 
       const fsSource = `
-                precision highp float;
+                precision mediump float;
                 varying vec2 v_uv;
                 uniform sampler2D u_tex;
                 uniform vec2 u_resolution;
@@ -365,21 +370,10 @@
     async captureFullPage() {
       const rect = this.el.getBoundingClientRect();
 
-      const prevScrollX = window.scrollX;
-      const prevScrollY = window.scrollY;
-
-      if (prevScrollY !== 0 || prevScrollX !== 0) {
-        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-        // Ensure layout has updated before continuing.
-        await new Promise((r) => requestAnimationFrame(r));
-      }
-
       this.canvas.style.visibility = "hidden";
 
       const tempAttr = `data-liquid-ignore`;
       this.el.setAttribute(tempAttr, "");
-
-      await new Promise((r) => requestAnimationFrame(r));
 
       let viewportCanvas;
       try {
@@ -403,14 +397,6 @@
       }
 
       if (!viewportCanvas) return;
-
-      if (prevScrollY !== 0 || prevScrollX !== 0) {
-        window.scrollTo({
-          top: prevScrollY,
-          left: prevScrollX,
-          behavior: "instant",
-        });
-      }
 
       this.updateTexture(viewportCanvas);
       this.fadeIn();

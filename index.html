@@ -488,7 +488,11 @@
         // GSAP SplitText Animation
         gsap.registerPlugin(SplitText);
 
-        document.fonts.ready.then(() => {
+        const fontsReady = (document.fonts && document.fonts.ready)
+          ? document.fonts.ready
+          : Promise.resolve();
+
+        fontsReady.then(() => {
           gsap.set(".split", { visibility: "visible" });
 
           let split = SplitText.create(".split", {
