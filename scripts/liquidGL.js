@@ -584,6 +584,10 @@
 
     /* ----------------------------- */
     render() {
+      if (this.canvas.width === 0 || this.canvas.height === 0) {
+        return;
+      }
+
       const gl = this.gl;
       if (!this.program || !this.texture) return;
       gl.clearColor(0, 0, 0, 0);

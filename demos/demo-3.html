@@ -339,8 +339,8 @@
 
           gsap.ticker.add((time) => {
             lenis.raf(time * 1000);
-            if (glassEffect) {
-              glassEffect.render(); // Render in sync with Lenis
+            if (glassEffect && !glassEffect.options.specular) {
+              glassEffect.render();
             }
           });
 
