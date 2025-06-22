@@ -41,9 +41,19 @@
       }
       .left-column {
         overflow-y: auto;
+        /* Hide scrollbars but retain scrollability */
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE and Edge */
+      }
+
+      .left-column::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Opera */
       }
       .right-column {
         background-color: var(--bg-color);
+        display: flex; /* Center login form */
+        align-items: center;
+        justify-content: center;
       }
       .image-container {
         overflow: clip;
@@ -223,6 +233,94 @@
         filter: invert(1);
         opacity: 0.3;
       }
+
+      /* --- Login Form Styles --- */
+      .login-card {
+        width: auto;
+        padding: 2rem 2.25rem 2.5rem;
+        background: #ffffff;
+        border-radius: 1rem;
+        box-shadow: 0 20px 30px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        font-family: inherit;
+      }
+
+      .form-logo {
+        height: 2.5rem;
+        width: auto;
+        margin: 0 auto;
+      }
+
+      .login-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-color);
+        text-align: center;
+        margin-bottom: 0.5rem;
+      }
+
+      .login-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        margin-bottom: 1rem;
+      }
+
+      .login-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--secondary-text);
+      }
+
+      .login-input {
+        padding: 0.75rem 1rem;
+        border: 1px solid #d6d6d6;
+        border-radius: 0.5rem;
+        font-size: 0.95rem;
+        transition: border-color 0.2s ease;
+        font-family: inherit;
+        background-color: #fafafa;
+      }
+
+      .login-input:focus {
+        outline: none;
+        border-color: #6366f1;
+        background-color: #fff;
+      }
+
+      .login-button {
+        margin-top: 0.5rem;
+        padding: 0.75rem 1rem;
+        border: none;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #ffffff;
+        background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+        cursor: pointer;
+        transition: opacity 0.2s ease;
+      }
+
+      .login-button:hover {
+        opacity: 0.9;
+      }
+
+      .login-footer {
+        font-size: 0.75rem;
+        text-align: center;
+        color: var(--secondary-text);
+      }
+
+      .login-link {
+        color: #6366f1;
+        text-decoration: none;
+      }
+
+      .login-link:hover {
+        text-decoration: underline;
+      }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
@@ -308,7 +406,50 @@
           </a>
         </div>
       </div>
-      <div class="right-column"></div>
+      <div class="right-column">
+        <!-- Login Form -->
+        <div class="login-card">
+          <img
+            src="https://cdn.prod.website-files.com/683cfe5728992d2318dfecd3/6843df24213921eaac90bcda_67a3d1a10eb7305c70724387_logo.svg"
+            loading="lazy"
+            alt="NaughtyDuk©"
+            class="form-logo"
+          />
+          <h2 class="login-title">Sign in to LiquidGL</h2>
+          <form class="login-form" onsubmit="return false">
+            <div class="login-field">
+              <label for="email" class="login-label">Email</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                placeholder="you@example.com"
+                class="login-input"
+                autocomplete="email"
+                required
+              />
+            </div>
+            <div class="login-field">
+              <label for="password" class="login-label">Password</label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                placeholder="••••••••"
+                class="login-input"
+                autocomplete="current-password"
+                required
+              />
+            </div>
+            <button type="submit" class="login-button">Continue</button>
+          </form>
+          <p class="login-footer">
+            By continuing you agree to our
+            <a href="#" class="login-link">Terms</a> &amp;
+            <a href="#" class="login-link">Privacy</a>
+          </p>
+        </div>
+      </div>
     </div>
 
     <!-- Scripts -->
