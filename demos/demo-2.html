@@ -116,15 +116,17 @@
 
       .menu-wrap {
         display: flex;
-        align-items: center;
-        padding: 1rem;
-        gap: 1rem;
-        border-radius: 1.5vw;
-        justify-content: flex-start;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 1.25rem 1.5rem;
+        gap: 0.5rem;
+        width: 340px;
+        height: 200px;
+        border-radius: 1rem;
         position: relative;
         overflow: clip;
         background: rgba(255, 255, 255, 0.1); /* Fallback */
-        backdrop-filter: blur(20px) saturate(180%); /* Basic blur for non-WebGL */
+        backdrop-filter: blur(30px) saturate(180%); /* Basic blur for non-WebGL */
         will-change: transform;
       }
 
@@ -301,6 +303,7 @@
         background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
         cursor: pointer;
         transition: opacity 0.2s ease;
+        width: 100%;
       }
 
       .login-button:hover {
@@ -320,6 +323,72 @@
 
       .login-link:hover {
         text-decoration: underline;
+      }
+
+      /* --- Credit Card Elements --- */
+      .card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+      }
+
+      .card-chip {
+        width: 44px;
+        height: auto;
+        opacity: 0.8;
+      }
+
+      .card-brand {
+        width: 56px;
+        height: auto;
+        filter: grayscale(1) invert(1);
+      }
+
+      .card-number {
+        font-size: 1.2rem 19.2px;
+        letter-spacing: 0.33rem;
+        font-weight: 600;
+        color: #ffffff;
+        width: 100%;
+        text-align: left;
+      }
+
+      .card-footer {
+        display: flex;
+        justify-content: flex-start;
+        gap: 3rem;
+        width: 100%;
+        font-size: 0.75rem;
+        color: #ffffff;
+      }
+
+      .card-footer .label {
+        text-transform: uppercase;
+        opacity: 0.6;
+        font-weight: 500;
+        letter-spacing: 0.05rem;
+        font-size: 0.65rem;
+      }
+
+      .card-holder,
+      .card-expiry {
+        display: flex;
+        flex-direction: column;
+        gap: 0.05rem;
+      }
+
+      .value {
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.02rem;
+      }
+
+      /* Ensure all credit card content renders above the WebGL canvas */
+      .credit-card * {
+        position: relative;
+        z-index: 3;
+        mix-blend-mode: difference;
       }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
@@ -377,29 +446,24 @@
             style="text-decoration: none"
             target="_blank"
           >
-            <div class="menu-wrap">
-              <div class="menu-logo-wrap">
+            <div class="menu-wrap credit-card">
+              <div class="card-top">
+                <img src="/assets/card-chip.svg" alt="Chip" class="card-chip" />
                 <img
-                  src="https://cdn.prod.website-files.com/683cfe5728992d2318dfecd3/6843df24213921eaac90bcda_67a3d1a10eb7305c70724387_logo.svg"
-                  loading="lazy"
-                  alt="NaughtyDuk©"
-                  class="menu-logo"
+                  src="https://logo.clearbit.com/visa.com"
+                  alt="Visa"
+                  class="card-brand"
                 />
               </div>
-              <div class="menu-items-wrap">
-                <div class="menu-item-stack">
-                  <p class="menu-item-text">LiquidGL by NaughtyDuk©</p>
-                  <div class="download-wrapper">
-                    <div class="download-link">
-                      <img
-                        src="/assets/download-icon.svg"
-                        alt="Download"
-                        class="download-icon"
-                      />
-                      <p class="small-text-link">Download</p>
-                    </div>
-                    <p class="version-text">v1.0.0</p>
-                  </div>
+              <div class="card-number">**** **** **** 5482</div>
+              <div class="card-footer">
+                <div class="card-holder">
+                  <span class="label">Card Holder</span>
+                  <span class="value">NaughtyDuk© LTD</span>
+                </div>
+                <div class="card-expiry">
+                  <span class="label">Expires</span>
+                  <span class="value">12/28</span>
                 </div>
               </div>
             </div>
@@ -415,7 +479,7 @@
             alt="NaughtyDuk©"
             class="form-logo"
           />
-          <h2 class="login-title">Sign in to LiquidGL</h2>
+          <h2 class="login-title">LiquidGL Bank</h2>
           <form class="login-form" onsubmit="return false">
             <div class="login-field">
               <label for="email" class="login-label">Email</label>
@@ -480,8 +544,8 @@
             snapshot: ".main-content",
             target: ".menu-wrap",
             refraction: 0,
-            bevelDepth: 0.052,
-            bevelWidth: 0.211,
+            bevelDepth: 0.1,
+            bevelWidth: 0.17,
             frost: 2,
             shadow: true,
             specular: true,
