@@ -4,11 +4,11 @@
 
 LiquidGL turns any fixed-position element into a perfectly refracted, glossy "glass pane" rendered in WebGL.
 
-<a href="https://liquidgl.naughtyduk.com"><strong>DEMO</strong></a>
+<a href="https://liquidgl.naughtyduk.com" target="_blank"><strong>DEMO</strong></a>
 
 ## Overview
 
-`LiquidGL` recreates Apple's upcoming "Liquid Glass" aesthetic in the browser with an ultra-light WebGL shader. Because WebGL cannot read live pixels for security reasons, the library takes a single high-resolution snapshot of the page when you call `LiquidGL()`. This keeps performance smooth, but it also means the pane can't refract content that changes afterwards, such as playing video or animations. Your page can still have video and animations, they just won't be refracted through the lens.
+`LiquidGL` recreates Apple's upcoming "Liquid Glass" aesthetic in the browser with an ultra-light WebGL shader. WebGL cannot read live pixels for security reasons, the library takes a single high-resolution snapshot of the page when you call `LiquidGL()`. This keeps performance smooth, but it also means the pane can't refract content that changes afterwards, such as playing video or animations. Your page can still have video and animations, they just won't be refracted through the lens.
 
 ---
 
@@ -134,6 +134,17 @@ Below are some ready-made configurations you can copy-paste. Feel free to tweak 
 | **Pulse**   | `{ refraction: 0.03, bevelDepth: 0, bevelWidth: 0.273, frost: 0, shadow: false, specular: false }`     | Flat pane with wide bevel—great for pulsing UI effects. |
 | **Frost**   | `{ refraction: 0, bevelDepth: 0.035, bevelWidth: 0.119, frost: 0.9, shadow: true, specular: true }`    | Softly diffused, privacy-glass style.                   |
 | **Edge**    | `{ refraction: 0.047, bevelDepth: 0.136, bevelWidth: 0.076, frost: 2, shadow: true, specular: false }` | Thin bevel and bright rim highlights.                   |
+
+---
+
+## FAQ
+
+| Question                                                      | Answer                                                                                                                                                                                                                                                                                                                                                               |
+| :------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Is there a resize handler?                                    | Yes resize is handled in the library and debounced to 250ms for performance.                                                                                                                                                                                                                                                                                         |
+| Does the effect work on mobile?                               | Yes the library handles all 3 versions of WebGL and provides a frosted CSS `backdrop-filter` as a backup for older devices.                                                                                                                                                                                                                                          |
+| I have a preloader, how should I initialise LiquidGL?         | Run your preloader as normal, then once the preloader disappears and page content is visible, you can call `LiquidGL();`.                                                                                                                                                                                                                                            |
+| What is the correct way to use LiquidGL with page animations? | Lets say you have a preloader, above the fold intro animations and scroll animations on your page. You would:<br><br>1) animate your preloader and intro animations<br>2) once complete call `LiquidGL();`<br>3) in the `on.init();` function, set your initial states for elements, i.e setting the start position of any animations like transforms, SplitText etc |
 
 ---
 
