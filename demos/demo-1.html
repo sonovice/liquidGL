@@ -63,6 +63,11 @@
         display: flex;
         position: fixed;
         inset: 0;
+        pointer-events: none;
+      }
+
+      .menu-anchor a {
+        pointer-events: auto;
       }
 
       .menu-link-wrapper {
@@ -195,6 +200,7 @@
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery.ripples@0.6.3/dist/jquery.ripples.min.js"></script>
@@ -303,6 +309,7 @@
 
         // A function to initialize the glass effect and its controls
         function initializeLiquidGL() {
+          let gui, glassFolder;
           // Initialize the Liquid Glass effect on our menu
           glassEffect = LiquidGL({
             target: ".menu-wrap",
@@ -313,6 +320,35 @@
             shadow: true,
             specular: true,
             reveal: "fade",
+            on: {
+              init(instance) {
+                // Setup lil-gui controls only after LiquidGL is fully initialised
+                gui = new lil.GUI();
+                glassFolder = gui.addFolder("LiquidGL Effect");
+
+                glassFolder
+                  .add(instance.options, "refraction", 0, 0.1, 0.001)
+                  .name("Refraction");
+                glassFolder
+                  .add(instance.options, "bevelDepth", 0, 0.2, 0.001)
+                  .name("Bevel Depth");
+                glassFolder
+                  .add(instance.options, "bevelWidth", 0, 0.5, 0.001)
+                  .name("Bevel Width");
+                glassFolder
+                  .add(instance.options, "frost", 0, 10, 0.1)
+                  .name("Frost");
+                glassFolder.add(instance.options, "specular").name("Specular");
+                glassFolder
+                  .add(instance.options, "shadow")
+                  .name("Enable Shadow")
+                  .onChange((value) => {
+                    instance.setShadow(value);
+                  });
+                glassFolder.add(instance.options, "reveal").name("reveal");
+                glassFolder.close();
+              },
+            },
           });
         }
 

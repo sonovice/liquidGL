@@ -84,10 +84,7 @@
         );
         this.snapshotTarget = document.body;
       }
-      // Try to obtain a WebGL context using a cascading fallback strategy so
-      // that we cover quirks across mobile browsers (e.g. some expose only
-      // WebGL2, others still rely on the historical "experimental-webgl"
-      // context name). The very first successful call will be used.
+
       const ctxAttribs = { alpha: true, premultipliedAlpha: true };
       this.gl =
         this.canvas.getContext("webgl", ctxAttribs) ||
@@ -98,19 +95,13 @@
         return;
       }
 
-      // If WebGL is running, we don't need the CSS fallback, but we keep
-      // the colour so that browsers without WebGL still get a degraded look.
-      // To avoid a white flash while the shader is still transparent we will
-      // progressively fade this colour in during the reveal animation.
       const bgCol = window.getComputedStyle(this.el).backgroundColor;
       const rgbaMatch = bgCol.match(/rgba?\(([^)]+)\)/);
       this._bgColorComponents = null;
       if (rgbaMatch) {
         const comps = rgbaMatch[1].split(/[ ,]+/).map(parseFloat);
-        // rgb() gives 3 comps, rgba() gives 4.
         const [r, g, b, a = 1] = comps;
         this._bgColorComponents = { r, g, b, a };
-        // Start with zero alpha so the colour is invisible until we fade.
         this.el.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0)`;
       }
 
@@ -138,15 +129,10 @@
       this.startTime = Date.now();
       this.renderLoopRunning = false;
 
-      // --------------------------------------------------------------
-      // Resize handling – use ResizeObserver when available; fall back
-      // to window resize events on older mobile browsers (e.g. iOS 12).
-      // --------------------------------------------------------------
       if ("ResizeObserver" in window) {
         this.resizeObserver = new ResizeObserver(() => this.resize());
         this.resizeObserver.observe(this.el);
 
-        // Debounced body resize observer to recapture the background.
         const debouncedRecapture = debounce(() => this.captureFullPage(), 250);
         const snapshotResizeObserver = new ResizeObserver(debouncedRecapture);
         snapshotResizeObserver.observe(this.snapshotTarget);
@@ -158,7 +144,6 @@
         window.addEventListener("resize", debouncedResize, { passive: true });
       }
 
-      // Track scroll cheaply – just update an offset uniform.
       this.scrollOffset = window.scrollY;
       this.lastCaptureScroll = window.scrollY;
 
@@ -182,9 +167,6 @@
         return;
       }
 
-      // Calculate scaleFactor BEFORE taking the first snapshot so that we
-      // never hand an undefined value to html2canvas (which would otherwise
-      // result in NaNs and silent failures on iOS/Android).
       const fullH = this.snapshotTarget.scrollHeight;
       const fullW = this.snapshotTarget.scrollWidth;
       const maxTex = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) || 8192;
@@ -202,7 +184,7 @@
           ) {
             this.options.on.init.call(this, this);
           }
-          this._reveal(); // Final, flicker-free reveal logic.
+          this._reveal();
 
           if (this.options.specular) {
             this._startContinuousRender();
@@ -247,24 +229,19 @@
       const revealTypes = { none: 0, fade: 1 };
       const revealTypeIndex = revealTypes[revealType];
 
-      // Use a robust double-requestAnimationFrame pattern to prevent flickers.
       requestAnimationFrame(() => {
         if (revealType === "fade") {
-          // --- Shader-driven reveal ---
           const duration = 1000;
           const startTime = Date.now();
 
-          // 1. Prepare shader uniforms.
           this.gl.useProgram(this.program);
           this.gl.uniform1i(this.uRevealType, revealTypeIndex);
 
           const animate = () => {
             const progress = Math.min(1, (Date.now() - startTime) / duration);
             this.gl.uniform1f(this.uRevealProgress, progress);
-            // Sync the element's CSS opacity with the shader-driven alpha.
             this.el.style.opacity = (this.originalOpacity || 1) * progress;
 
-            // Also fade in the fallback background colour so it never jumps.
             if (this._bgColorComponents) {
               const { r, g, b, a } = this._bgColorComponents;
               this.el.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${
@@ -277,7 +254,6 @@
               requestAnimationFrame(animate);
             } else {
               this.el.style.transition = this.originalTransition || "";
-              // Ensure final state is fully opaque.
               this.el.style.opacity = this.originalOpacity || 1;
               if (this._bgColorComponents) {
                 const { r, g, b, a } = this._bgColorComponents;
@@ -287,23 +263,16 @@
             }
           };
 
-          // 2. Silently render the first transparent frame.
           this.gl.uniform1f(this.uRevealProgress, 0);
           this.render();
 
-          // 3. Start animating in the NEXT frame (we don't touch CSS opacity here
-          //    because the animate() loop now handles it frame-by-frame).
           requestAnimationFrame(() => {
             animate();
           });
         } else {
-          // --- Default 'none' reveal using CSS ---
-          // 1. Silently render the final state.
           this.render();
-          // 2. Apply transition properties.
           this.el.style.transition =
             this.originalTransition || "opacity 250ms ease";
-          // 3. In the NEXT frame, change opacity to trigger the transition.
           requestAnimationFrame(() => {
             this.el.style.opacity = this.originalOpacity || 1;
           });
@@ -518,7 +487,6 @@
 
       let viewportCanvas;
       try {
-        // Recompute scaleFactor in case the page dimensions have changed
         const fullH2 = this.snapshotTarget.scrollHeight;
         const fullW2 = this.snapshotTarget.scrollWidth;
         const maxTex2 = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) || 8192;
@@ -536,7 +504,7 @@
         };
 
         const h2cOpts = {
-          allowTaint: false, // keep canvas untainted for WebGL
+          allowTaint: false,
           useCORS: true,
           backgroundColor: null,
           removeContainer: true,
