@@ -170,7 +170,7 @@ Below are some ready-made configurations you can copy-paste. Feel free to tweak 
 
 **Border-radius**
 
-> LiquidGL automatically inherits the `border-radius` of the `target` element, ensuring the refraction respects rounded corners without any extra configuration.0
+> LiquidGL automatically inherits the `border-radius` of the `target` element, ensuring the refraction respects rounded corners without any extra configuration.
 
 ---
 
