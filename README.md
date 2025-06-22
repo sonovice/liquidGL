@@ -1,6 +1,6 @@
 # LiquidGL – Ultra-light glassmorphism for the web
 
-<a href="https://liquidgl.naughtyduk.com"><img src="/assets/liquidGlass-promo.gif" alt="LiquidGL" style="width: 100%"/></a>
+<a href="https://liquidgl.naughtyduk.com"><img src="/assets/liquidGlass-promo-IMG.jpg" alt="LiquidGL" style="width: 100%"/></a>
 
 LiquidGL turns any fixed-position element into a perfectly refracted, glossy "glass pane" rendered in WebGL.
 
