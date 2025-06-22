@@ -125,6 +125,8 @@ Next, initialise the library with the selector for your target element.
 | `frost`      | number   | `0`         | Size of the blur kernel in **pixels** for a frosted glass look.                                             |
 | `shadow`     | boolean  | `true`      | Toggles a subtle drop-shadow under the pane.                                                                |
 | `specular`   | boolean  | `true`      | Enables animated specular highlights that move with time.                                                   |
+| `tilt`       | boolean  | `false`     | Adds a 3-D tilt interaction on cursor/touch movement (rotates the pane).                                    |
+| `tiltFactor` | number   | `5`         | Depth of the tilt in degrees (0-10 recommended). Higher = steeper tilt.                                     |
 | `reveal`     | string   | `'fade'`    | - `None` - immediately render the `target` element.<br>- `Fade` - a smooth fade in of the `target` element. |
 | `on.init`    | function | `—`         | Runs once the first full render completes. Receives the instance.                                           |
 

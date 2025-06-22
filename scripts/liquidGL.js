@@ -129,6 +129,9 @@
       this.startTime = Date.now();
       this.renderLoopRunning = false;
       this.scrollOffset = 0;
+      /* Tilt interaction setup */
+      this._tiltHandlersBound = false;
+      this._isPointerInside = false;
 
       if ("ResizeObserver" in window) {
         this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -189,6 +192,11 @@
       }
 
       this.setShadow(this.options.shadow);
+
+      /* Initialise tilt interactions if enabled */
+      if (this.options.tilt) {
+        this._bindTiltHandlers();
+      }
     }
 
     setShadow(enabled) {
@@ -595,6 +603,73 @@
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
+
+    /* ----------------------------- */
+    _bindTiltHandlers() {
+      if (this._tiltHandlersBound) return;
+
+      const maxTilt = Number.isFinite(this.options.tiltFactor)
+        ? this.options.tiltFactor
+        : 5;
+
+      const applyTilt = (clientX, clientY) => {
+        // Ensure an eased but responsive transition while interacting
+        if (!this._tiltInteracting) {
+          this._tiltInteracting = true;
+          this.el.style.transition =
+            "transform 0.12s cubic-bezier(0.33,1,0.68,1)";
+        }
+        const rect = this.el.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const dx = clientX - cx;
+        const dy = clientY - cy;
+        const pctX = dx / (rect.width / 2);
+        const pctY = dy / (rect.height / 2);
+        const rotY = pctX * maxTilt;
+        const rotX = -pctY * maxTilt;
+        this.el.style.transform = `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+      };
+
+      this._onMouseEnter = () => {
+        this._tiltInteracting = false; // reset flag so first move eases
+      };
+      this._onTouchStart = (e) => {
+        this._tiltInteracting = false;
+        if (e.touches && e.touches.length === 1) {
+          const t = e.touches[0];
+          applyTilt(t.clientX, t.clientY);
+        }
+      };
+
+      this._onMouseMove = (e) => applyTilt(e.clientX, e.clientY);
+      this._onMouseLeave = () => {
+        // Ease back to original orientation
+        this.el.style.transition =
+          "transform 0.4s cubic-bezier(0.33, 1, 0.68, 1)"; // easeOut
+        this.el.style.transform =
+          "perspective(800px) rotateX(0deg) rotateY(0deg)";
+      };
+
+      this.el.addEventListener("mouseenter", this._onMouseEnter, {
+        passive: true,
+      });
+      this.el.addEventListener("mousemove", this._onMouseMove, {
+        passive: true,
+      });
+      this.el.addEventListener("mouseleave", this._onMouseLeave, {
+        passive: true,
+      });
+      this.el.addEventListener("touchstart", this._onTouchStart, {
+        passive: true,
+      });
+      this.el.addEventListener("touchmove", this._onTouchMove, {
+        passive: true,
+      });
+      this.el.addEventListener("touchend", this._onTouchEnd, { passive: true });
+
+      this._tiltHandlersBound = true;
+    }
   }
 
   /* --------------------------------------------------
@@ -611,6 +686,8 @@
       shadow: true,
       specular: true,
       reveal: "fade",
+      tilt: false,
+      tiltFactor: 5,
       on: {},
     };
     const options = { ...defaults, ...userOptions };
