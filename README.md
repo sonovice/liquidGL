@@ -84,7 +84,7 @@ Next, initialise the library with the selector for your target element.
 
 ---
 
-## Optionally use with Lenis/GSAP
+## Optionally sync with Lenis/GSAP
 
 ```html
 <script>
@@ -108,7 +108,7 @@ Next, initialise the library with the selector for your target element.
 
 > Don't forget to include Lenis and GSAP before calling them in the load event.
 
-### Parameters
+## Parameters
 
 | Option       | Type     | Default     | Description                                                            |
 | ------------ | -------- | ----------- | ---------------------------------------------------------------------- |
@@ -121,9 +121,9 @@ Next, initialise the library with the selector for your target element.
 | `specular`   | boolean  | `true`      | Enables animated specular highlights that move with time.              |
 | `on.init`    | function | `—`         | Runs once the first full render completes. Receives the instance.      |
 
-All options are optional—only `target` is required.
+> The `target` parameter is required, all other parameters are optional.
 
-### Presets
+## Presets
 
 Below are some ready-made configurations you can copy-paste. Feel free to tweak values to suit your design.
 
@@ -144,17 +144,17 @@ Below are some ready-made configurations you can copy-paste. Feel free to tweak 
 | Is there a resize handler?                                    | Yes resize is handled in the library and debounced to 250ms for performance.                                                                                                                                                                                                                                                                                         |
 | Does the effect work on mobile?                               | Yes the library handles all 3 versions of WebGL and provides a frosted CSS `backdrop-filter` as a backup for older devices.                                                                                                                                                                                                                                          |
 | I have a preloader, how should I initialise LiquidGL?         | Run your preloader as normal, then once the preloader disappears and page content is visible, you can call `LiquidGL();`.                                                                                                                                                                                                                                            |
-| What is the correct way to use LiquidGL with page animations? | Lets say you have a preloader, above the fold intro animations and scroll animations on your page. You would:<br><br>1) animate your preloader and intro animations<br>2) once complete call `LiquidGL();`<br>3) in the `on.init();` function, set your initial states for elements, i.e setting the start position of any animations like transforms, SplitText etc |
+| What is the correct way to use LiquidGL with page animations? | Lets say you have a preloader, above the fold intro animations and scroll animations on your page. You would:<br><br>1) animate your preloader and intro animations<br>2) once complete call `LiquidGL();`<br>3) in the `on.init();` callback, set your initial states for elements, i.e setting the start position of any animations like transforms, SplitText etc |
 
 ---
 
 ## Important Notes
 
-- Animated or video content **behind** the pane is not re-captured in real-time; the snapshot is static for performance reasons.
-- All page content must be present (visible in the DOM) **before** you initialise LiquidGL. Deferred/scroll-triggered animations should be started **in** `on.init`.
+- Animated or video content **behind** the pane is not re-captured in real-time; the snapshot is static for performance and security reasons. Unfortunately there is no current workaround.
+- All page content must be present (visible in the DOM) **before** you initialise LiquidGL. Deferred/scroll-triggered animations should have their initial states set **in** `on.init`.
 - The initial capture is synchronous and may block the main thread momentarily; call `LiquidGL()` inside a `DOMContentLoaded` or `load` handler to avoid jank during critical rendering.
 - Extremely long documents can exceed GPU texture limits, causing memory or performance issues. Consider segmenting very long pages or reducing `scaleFactor` (see source).
-- As with all WebGL effects, any image content inside the affected area i.e inside the target element must have permissive `Access-Control-Allow-Origin` headers set to prevent CORS issues.
+- As with all WebGL effects, any **image** content inside the `target` element must have permissive `Access-Control-Allow-Origin` headers set to prevent CORS issues.
 
 ---
 
