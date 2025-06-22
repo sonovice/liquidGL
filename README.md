@@ -1,6 +1,6 @@
 # LiquidGL – Ultra-light glassmorphism for the web
 
-<img src="/assets/liquidGlass-promo.gif" alt="LiquidGL" style="width: 100%"/>
+<a href="https://liquidgl.naughtyduk.com"><img src="/assets/liquidGlass-promo.gif" alt="LiquidGL" style="width: 100%"/></a>
 
 LiquidGL turns any fixed-position element into a perfectly refracted, glossy "glass pane" rendered in WebGL.
 
@@ -23,7 +23,7 @@ Add **both** of the following scripts before you initialise LiquidGL (normally a
   defer
 ></script>
 
-<!-- liquid.js – the library itself -->
+<!-- liquidGL.js – the library itself -->
 <script src="/scripts/liquidGL.js" defer></script>
 ```
 
@@ -38,25 +38,28 @@ First, set up your HTML. The key is to have a parent element that will receive t
 ```html
 <!-- Example HTML structure -->
 <body>
-  <!-- A container to position your glass element -->
+  <!-- A container to position your glass element above the body -->
   <div class="fixed-container">
-    <!-- This is the target for LiquidGL, identified by its class -->
+    <!-- This is the target for LiquidGL, where the glass refraction is applied -->
     <div class="selector">
-      <!-- Your content goes inside the target -->
+      <!-- Your content goes inside the target and doesnt get refracted -->
       <div class="content">
-        <p>This text will appear on top of the glass.</p>
+        <img src="/example.svg" alt="Alt Text" />
+        <p>This example text content will appear on top of the glass.</p>
       </div>
     </div>
   </div>
 </body>
 ```
 
+> Make sure that your `.fixed-container` element has a high z-index so that it sits over your page content.
+
 Next, initialise the library with the selector for your target element.
 
 ```html
 <script>
   document.addEventListener("DOMContentLoaded", () => {
-    LiquidGL({
+    const glassEffect = LiquidGL({
       target: ".selector", // CSS selector for the element to glass-ify
       refraction: 0.01, // Base refraction strength (0–1)
       bevelDepth: 0.08, // Intensity of the edge bevel (0–1)
@@ -134,12 +137,13 @@ Below are some ready-made configurations you can copy-paste. Feel free to tweak 
 
 ---
 
-## Limitations
+## Important Notes
 
 - Animated or video content **behind** the pane is not re-captured in real-time; the snapshot is static for performance reasons.
 - All page content must be present (visible in the DOM) **before** you initialise LiquidGL. Deferred/scroll-triggered animations should be started **in** `on.init`.
 - The initial capture is synchronous and may block the main thread momentarily; call `LiquidGL()` inside a `DOMContentLoaded` or `load` handler to avoid jank during critical rendering.
 - Extremely long documents can exceed GPU texture limits, causing memory or performance issues. Consider segmenting very long pages or reducing `scaleFactor` (see source).
+- As with all WebGL effects, any image content inside the affected area i.e inside the target element must have Access-Control-Origin headers set to prevent CORS issues.
 
 ---
 
