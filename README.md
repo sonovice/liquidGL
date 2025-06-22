@@ -4,7 +4,9 @@
 
 LiquidGL turns any fixed-position element into a perfectly refracted, glossy "glass pane" rendered in WebGL.
 
-<a href="https://liquidgl.naughtyduk.com" target="_blank" rel="noopener noreferrer"><strong>DEMO</strong></a>
+<a href="https://liquidgl.naughtyduk.com" target="_blank" rel="noopener noreferrer"><strong>TRY IT OUT</strong></a>
+
+<a href="https://liquidgl.naughtyduk.com/demos/demo-1.html" target="_blank" rel="noopener noreferrer"><strong>DEMO 1</strong></a> | <a href="https://liquidgl.naughtyduk.com/demos/demo-2.html" target="_blank" rel="noopener noreferrer"><strong>DEMO 2</strong></a> | <a href="https://liquidgl.naughtyduk.com/demos/demo-3.html" target="_blank" rel="noopener noreferrer"><strong>DEMO 3</strong></a>
 
 ## Overview
 
