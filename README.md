@@ -154,7 +154,7 @@ Below are some ready-made configurations you can copy-paste. Feel free to tweak 
 - All page content must be present (visible in the DOM) **before** you initialise LiquidGL. Deferred/scroll-triggered animations should be started **in** `on.init`.
 - The initial capture is synchronous and may block the main thread momentarily; call `LiquidGL()` inside a `DOMContentLoaded` or `load` handler to avoid jank during critical rendering.
 - Extremely long documents can exceed GPU texture limits, causing memory or performance issues. Consider segmenting very long pages or reducing `scaleFactor` (see source).
-- As with all WebGL effects, any image content inside the affected area i.e inside the target element must have Access-Control-Origin headers set to prevent CORS issues.
+- As with all WebGL effects, any image content inside the affected area i.e inside the target element must have permissive `Access-Control-Allow-Origin` headers set to prevent CORS issues.
 
 ---
 
