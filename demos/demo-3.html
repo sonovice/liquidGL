@@ -361,28 +361,22 @@
             });
 
             tl.to(morphEl, { borderRadius: "50%", duration: 1, ease: "none" })
-              .to(
-                morphEl,
-                {
-                  width: "12vw",
-                  height: "20vw",
-                  borderRadius: "1vw",
-                  duration: 1,
-                  ease: "none",
-                },
-                "+=1"
-              )
-              .to(
-                morphEl,
-                {
-                  width: "25vw",
-                  height: "8vw",
-                  borderRadius: "4vw",
-                  duration: 1,
-                  ease: "none",
-                },
-                "+=1"
-              );
+              // Morph to tall rounded rectangle over extended duration
+              .to(morphEl, {
+                width: "12vw",
+                height: "20vw",
+                borderRadius: "1vw",
+                duration: 3,
+                ease: "none",
+              })
+              // Last morph to pill shape
+              .to(morphEl, {
+                width: "25vw",
+                height: "8vw",
+                borderRadius: "4vw",
+                duration: 2,
+                ease: "none",
+              });
           }
         });
       });
