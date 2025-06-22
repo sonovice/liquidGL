@@ -429,6 +429,7 @@
           backgroundColor: null,
           removeContainer: true,
           ignoreElements: (el) => {
+            if (el.hasAttribute(tempAttr)) return true;
             if (el.tagName === "CANVAS") return true;
             if (el.tagName === "IMG" && isXOrigin(el.src)) return true;
             return false;
