@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LiquidGL WebGL - NaughtyDuk©</title>
+    <title>Demo 2 - LiquidGL WebGL - NaughtyDuk©</title>
     <link rel="icon" href="/assets/favicon.ico" />
     <style>
       :root {
@@ -505,7 +505,7 @@
                 required
               />
             </div>
-            <button type="submit" class="login-button">Continue</button>
+            <button type="submit" class="login-button">Log In</button>
           </form>
           <p class="login-footer">
             By continuing you agree to our
@@ -590,17 +590,29 @@
             wrapper: document.querySelector("#left-col"),
           });
 
-          // Forward scroll events from the right column to Lenis
-          const rightColumn = document.querySelector(".right-column");
-          if (rightColumn) {
-            rightColumn.addEventListener(
-              "wheel",
-              (e) => {
-                lenis.onWheel(e);
-              },
-              { passive: false }
-            );
-          }
+          const leftCol = document.querySelector("#left-col");
+          document.addEventListener(
+            "wheel",
+            (e) => {
+              if (!leftCol) return;
+              // If the event did NOT originate inside the scrolling column,
+              // synthesise a new wheel event targeted at it so Lenis receives it.
+              if (!e.target.closest("#left-col")) {
+                const simulated = new WheelEvent("wheel", {
+                  deltaX: e.deltaX,
+                  deltaY: e.deltaY,
+                  deltaMode: e.deltaMode,
+                  clientX: e.clientX,
+                  clientY: e.clientY,
+                  bubbles: true,
+                  cancelable: true,
+                });
+                leftCol.dispatchEvent(simulated);
+                e.preventDefault();
+              }
+            },
+            { passive: false }
+          );
 
           lenis.on("scroll", ScrollTrigger.update);
 
