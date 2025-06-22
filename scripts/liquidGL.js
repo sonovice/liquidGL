@@ -91,10 +91,21 @@
         return;
       }
 
-      // If WebGL is running, we don't need the CSS fallback. Disabling it
-      // prevents the browser from doing expensive, redundant work.
-      this.el.style.backdropFilter = "none";
-      this.el.style.webkitBackdropFilter = "none";
+      // If WebGL is running, we don't need the CSS fallback, but we keep
+      // the colour so that browsers without WebGL still get a degraded look.
+      // To avoid a white flash while the shader is still transparent we will
+      // progressively fade this colour in during the reveal animation.
+      const bgCol = window.getComputedStyle(this.el).backgroundColor;
+      const rgbaMatch = bgCol.match(/rgba?\(([^)]+)\)/);
+      this._bgColorComponents = null;
+      if (rgbaMatch) {
+        const comps = rgbaMatch[1].split(/[ ,]+/).map(parseFloat);
+        // rgb() gives 3 comps, rgba() gives 4.
+        const [r, g, b, a = 1] = comps;
+        this._bgColorComponents = { r, g, b, a };
+        // Start with zero alpha so the colour is invisible until we fade.
+        this.el.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0)`;
+      }
 
       this.texture = null;
       this.program = null;
@@ -109,6 +120,8 @@
       this.uRadius = null;
       this.uTime = null;
       this.uSpecular = null;
+      this.uRevealProgress = null;
+      this.uRevealType = null;
       this.textureWidth = 0;
       this.textureHeight = 0;
       this.uvScale = [0, 0];
@@ -116,6 +129,7 @@
       this.initialX = 0;
       this.initialY = 0;
       this.startTime = Date.now();
+      this.renderLoopRunning = false;
 
       // --------------------------------------------------------------
       // Resize handling – use ResizeObserver when available; fall back
@@ -182,6 +196,11 @@
           ) {
             this.options.on.init.call(this, this);
           }
+          this._reveal(); // Final, flicker-free reveal logic.
+
+          if (this.options.specular) {
+            this._startContinuousRender();
+          }
         });
       };
 
@@ -203,13 +222,86 @@
       }
     }
 
-    fadeIn() {
+    _startContinuousRender() {
+      if (this.renderLoopRunning) return;
+      this.renderLoopRunning = true;
+      const loop = () => {
+        if (!document.body.contains(this.el)) {
+          this.renderLoopRunning = false;
+          return;
+        }
+        this.render();
+        requestAnimationFrame(loop);
+      };
+      requestAnimationFrame(loop);
+    }
+
+    _reveal() {
+      const revealType = this.options.reveal;
+      const revealTypes = { none: 0, fade: 1 };
+      const revealTypeIndex = revealTypes[revealType];
+
+      // Use a robust double-requestAnimationFrame pattern to prevent flickers.
       requestAnimationFrame(() => {
-        this.el.style.transition =
-          this.originalTransition || "opacity 250ms ease";
-        requestAnimationFrame(() => {
-          this.el.style.opacity = this.originalOpacity || 1;
-        });
+        if (revealType === "fade") {
+          // --- Shader-driven reveal ---
+          const duration = 1000;
+          const startTime = Date.now();
+
+          // 1. Prepare shader uniforms.
+          this.gl.useProgram(this.program);
+          this.gl.uniform1i(this.uRevealType, revealTypeIndex);
+
+          const animate = () => {
+            const progress = Math.min(1, (Date.now() - startTime) / duration);
+            this.gl.uniform1f(this.uRevealProgress, progress);
+            // Sync the element's CSS opacity with the shader-driven alpha.
+            this.el.style.opacity = (this.originalOpacity || 1) * progress;
+
+            // Also fade in the fallback background colour so it never jumps.
+            if (this._bgColorComponents) {
+              const { r, g, b, a } = this._bgColorComponents;
+              this.el.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${
+                a * progress
+              })`;
+            }
+            this.render();
+
+            if (progress < 1) {
+              requestAnimationFrame(animate);
+            } else {
+              this.el.style.transition = this.originalTransition || "";
+              // Ensure final state is fully opaque.
+              this.el.style.opacity = this.originalOpacity || 1;
+              if (this._bgColorComponents) {
+                const { r, g, b, a } = this._bgColorComponents;
+                this.el.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
+              }
+              if (!this.renderLoopRunning) this.render();
+            }
+          };
+
+          // 2. Silently render the first transparent frame.
+          this.gl.uniform1f(this.uRevealProgress, 0);
+          this.render();
+
+          // 3. Start animating in the NEXT frame (we don't touch CSS opacity here
+          //    because the animate() loop now handles it frame-by-frame).
+          requestAnimationFrame(() => {
+            animate();
+          });
+        } else {
+          // --- Default 'none' reveal using CSS ---
+          // 1. Silently render the final state.
+          this.render();
+          // 2. Apply transition properties.
+          this.el.style.transition =
+            this.originalTransition || "opacity 250ms ease";
+          // 3. In the NEXT frame, change opacity to trigger the transition.
+          requestAnimationFrame(() => {
+            this.el.style.opacity = this.originalOpacity || 1;
+          });
+        }
       });
     }
 
@@ -237,6 +329,8 @@
                 uniform float u_radius;
                 uniform float u_time;
                 uniform bool u_specular;
+                uniform float u_revealProgress;
+                uniform int u_revealType;
         
                 float udRoundBox( vec2 p, vec2 b, float r )
                 {
@@ -335,6 +429,14 @@
                   // Keep whatever alpha html2canvas captured – if the pixel is transparent
                   // we want the underlying page colour to show through instead of forcing
                   // an opaque black.
+                  if (u_revealType == 1) { // 1 = fade
+                      // Premultiply RGB by the same factor when premultipliedAlpha
+                      // is enabled. Without this, the very first low-alpha frame
+                      // can appear bright (causing a white flash) because RGB is
+                      // left at full intensity.
+                      finalColor.rgb *= u_revealProgress;
+                      finalColor.a  *= u_revealProgress;
+                  }
                   gl_FragColor = finalColor;
                 }
               `;
@@ -353,6 +455,11 @@
       this.uRadius = gl.getUniformLocation(this.program, "u_radius");
       this.uTime = gl.getUniformLocation(this.program, "u_time");
       this.uSpecular = gl.getUniformLocation(this.program, "u_specular");
+      this.uRevealProgress = gl.getUniformLocation(
+        this.program,
+        "u_revealProgress"
+      );
+      this.uRevealType = gl.getUniformLocation(this.program, "u_revealType");
 
       const posLoc = gl.getAttribLocation(this.program, "a_position");
       this.posBuf = gl.createBuffer();
@@ -456,7 +563,6 @@
 
       console.log(`LiquidGL: capture attempt ${attempt} succeeded`);
       this.updateTexture(viewportCanvas);
-      this.fadeIn();
 
       this.textureWidth = viewportCanvas.width;
       this.textureHeight = viewportCanvas.height;
@@ -536,6 +642,7 @@
       frost: 0,
       shadow: true,
       specular: true,
+      reveal: "none",
       on: {},
     };
     const options = { ...defaults, ...userOptions };
