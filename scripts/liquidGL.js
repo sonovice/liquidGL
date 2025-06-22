@@ -236,7 +236,7 @@
     }
 
     _reveal() {
-      const revealType = this.options.reveal;
+      const revealType = this.options.reveal ?? "fade";
       const revealTypes = { none: 0, fade: 1 };
       const revealTypeIndex = revealTypes[revealType];
 
@@ -637,7 +637,7 @@
       frost: 0,
       shadow: true,
       specular: true,
-      reveal: "none",
+      reveal: "fade",
       on: {},
     };
     const options = { ...defaults, ...userOptions };

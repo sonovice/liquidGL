@@ -67,6 +67,7 @@ Next, initialise the library with the selector for your target element.
       frost: 2, // Subtle blur radius in px. 0 = crystal clear
       shadow: true, // Adds a soft drop-shadow under the pane
       specular: true, // Animated light highlights (slightly more GPU)
+      reveal: "fade", // Reveal animation
       on: {
         init(instance) {
           // The `init` callback fires once LiquidGL has taken its snapshot
@@ -110,16 +111,17 @@ Next, initialise the library with the selector for your target element.
 
 ## Parameters
 
-| Option       | Type     | Default     | Description                                                            |
-| ------------ | -------- | ----------- | ---------------------------------------------------------------------- |
-| `target`     | string   | `.selector` | CSS selector of the element that should receive the effect.            |
-| `refraction` | number   | `0.01`      | Base refraction offset applied across the pane.                        |
-| `bevelDepth` | number   | `0.08`      | Additional refraction applied on the very edge to simulate depth.      |
-| `bevelWidth` | number   | `0.15`      | Width of the bevel zone, expressed as a fraction of the shortest side. |
-| `frost`      | number   | `0`         | Size of the blur kernel in **pixels** for a frosted glass look.        |
-| `shadow`     | boolean  | `true`      | Toggles a subtle drop-shadow under the pane.                           |
-| `specular`   | boolean  | `true`      | Enables animated specular highlights that move with time.              |
-| `on.init`    | function | `—`         | Runs once the first full render completes. Receives the instance.      |
+| Option       | Type     | Default     | Description                                                                                                                                    |
+| ------------ | -------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `target`     | string   | `.selector` | CSS selector of the element that should receive the effect.                                                                                    |
+| `refraction` | number   | `0.01`      | Base refraction offset applied across the pane.                                                                                                |
+| `bevelDepth` | number   | `0.08`      | Additional refraction applied on the very edge to simulate depth.                                                                              |
+| `bevelWidth` | number   | `0.15`      | Width of the bevel zone, expressed as a fraction of the shortest side.                                                                         |
+| `frost`      | number   | `0`         | Size of the blur kernel in **pixels** for a frosted glass look.                                                                                |
+| `shadow`     | boolean  | `true`      | Toggles a subtle drop-shadow under the pane.                                                                                                   |
+| `specular`   | boolean  | `true`      | Enables animated specular highlights that move with time.                                                                                      |
+| `reveal`     | string   | `'fade'`    | - `None` - immediately render the `target` element.<br>- `Fade` - a smooth fade in of the `target` element, <i>this is the default option.</i> |
+| `on.init`    | function | `—`         | Runs once the first full render completes. Receives the instance.                                                                              |
 
 > The `target` parameter is required, all other parameters are optional.
 
