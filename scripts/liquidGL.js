@@ -593,6 +593,23 @@
       gl.uniform1f(this.uBevelDepth, this.options.bevelDepth);
       gl.uniform1f(this.uBevelWidth, this.options.bevelWidth);
       gl.uniform1f(this.uFrost, this.options.frost);
+
+      const styleNow = window.getComputedStyle(this.el);
+      const brRaw = styleNow.borderTopLeftRadius.split(" ")[0];
+      const isPercent = brRaw.trim().endsWith("%");
+      let brPx;
+      const rectNow = this.el.getBoundingClientRect();
+      if (isPercent) {
+        const pct = parseFloat(brRaw);
+        brPx = (Math.min(rectNow.width, rectNow.height) * pct) / 100;
+      } else {
+        brPx = parseFloat(brRaw);
+      }
+
+      const dprNow = Math.min(1, window.devicePixelRatio || 1);
+      const maxAllowed = Math.min(rectNow.width, rectNow.height) * dprNow * 0.5;
+      const newRadius = Math.min(brPx * dprNow, maxAllowed);
+      this.radius = newRadius;
       gl.uniform1f(this.uRadius, this.radius);
 
       const elapsedTime = (Date.now() - this.startTime) / 1000.0;

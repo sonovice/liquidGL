@@ -180,7 +180,7 @@ Below are some ready-made configurations you can copy-paste. Feel free to tweak 
 
 **Border-radius**
 
-> LiquidGL automatically inherits the `border-radius` of the `target` element, ensuring the refraction respects rounded corners without any extra configuration.
+> LiquidGL automatically inherits the `border-radius` of the `target` element, ensuring the refraction respects rounded corners without any extra configuration. If you animate the `border-radius` of your `target` element i.e on scroll, the bevel will animate in real time to remain in sync.
 
 ---
 

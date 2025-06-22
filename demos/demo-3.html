@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Demo 3 - LiquidGL WebGL - NaughtyDuk©</title>
+    <link rel="icon" href="/assets/favicon.ico" />
+    <style>
+      :root {
+        --text-color: #333333;
+        --bg-color: #f0f0f0;
+        --secondary-text: rgba(0, 0, 0, 0.5);
+        scroll-behavior: auto;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        line-height: 1.5;
+      }
+      .image-container {
+        overflow: clip;
+        position: relative;
+        z-index: 1;
+        transform: translate3d(0, 0, 0);
+        height: 100svh;
+        padding: 5vw;
+        background: #ececec;
+      }
+
+      @media (max-width: 768px) {
+        .image-container {
+          height: 100svh;
+        }
+        .menu-anchor {
+          bottom: 1rem;
+        }
+      }
+
+      .image-container img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        will-change: transform;
+        border-radius: 2.5vw;
+      }
+
+      /* --- Menu Styles --- */
+      .menu-anchor {
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        display: flex;
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      .menu-anchor a {
+        pointer-events: auto;
+      }
+
+      .menu-link-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+        text-decoration: none;
+      }
+
+      .morph {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        gap: 1rem;
+        border-radius: 1.5vw;
+        justify-content: flex-start;
+        position: relative;
+        overflow: clip;
+        background: rgba(255, 255, 255, 0.1); /* Fallback */
+        backdrop-filter: blur(20px) saturate(180%); /* Basic blur for non-WebGL */
+        will-change: transform;
+        width: 15vw;
+        height: 15vw;
+      }
+
+      @media (max-width: 768px) {
+        .morph {
+          border-radius: 5vw;
+        }
+      }
+
+      .menu-item-stack {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .menu-logo-wrap,
+      .menu-items-wrap,
+      .menu-item-text {
+        z-index: 3;
+        mix-blend-mode: difference;
+      }
+
+      .menu-items-wrap {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+
+      .menu-item-text {
+        color: #b7b7b7;
+        font-weight: 700;
+        letter-spacing: -0.04rem;
+      }
+
+      .small-text-link {
+        font-size: 0.8rem;
+        color: #b7b7b7;
+        font-weight: 600;
+        letter-spacing: -0.02rem;
+      }
+
+      .menu-item {
+        padding: 0.5rem;
+        border-radius: 0.25vw;
+        justify-content: center;
+        align-items: center;
+        width: 2.25rem;
+        height: 2.25rem;
+        display: flex;
+        overflow: clip;
+      }
+
+      .menu-item-link {
+        display: block;
+      }
+
+      .menu-icon {
+        width: 24px;
+        height: 24px;
+        filter: invert(1);
+        opacity: 0.8;
+        transition: opacity 0.2s ease;
+      }
+
+      .menu-item-link:hover .menu-icon {
+        opacity: 1;
+      }
+
+      .menu-logo-wrap {
+        display: flex;
+        align-items: center;
+      }
+
+      .menu-logo {
+        height: 2.25rem;
+      }
+
+      .download-wrapper {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .download-link {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-decoration: none; /* remove underline from link */
+      }
+      .download-icon {
+        width: 0.75rem;
+        height: 0.75rem;
+      }
+      .version-text {
+        font-size: 0.75rem;
+        color: #b7b7b7;
+        letter-spacing: 0.02rem;
+        font-weight: 500;
+        mix-blend-mode: difference;
+      }
+
+      .ripples {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        filter: invert(1);
+        opacity: 0.3;
+      }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery.ripples@0.6.3/dist/jquery.ripples.min.js"></script>
+  </head>
+  <body>
+    <div class="ripples"></div>
+    <div class="main-content">
+      <div class="image-container">
+        <img
+          src="/assets/liquid-bkg-_0000_Comp-33.webp"
+          alt="Abstract colorful wallpaper"
+        />
+      </div>
+
+      <div class="image-container">
+        <img
+          src="/assets/liquid-bkg-_0001_Comp-183.webp"
+          alt="Abstract colorful wallpaper"
+        />
+      </div>
+
+      <div class="image-container">
+        <img
+          src="/assets/liquid-bkg-_0002_Comp-163.webp"
+          alt="Abstract colorful wallpaper"
+        />
+      </div>
+
+      <div class="image-container">
+        <img
+          src="/assets/liquid-bkg-_0003_Comp-151.webp"
+          alt="Abstract colorful wallpaper"
+        />
+      </div>
+
+      <div class="image-container">
+        <img
+          src="/assets/liquid-bkg-_0004_Comp-13.webp"
+          alt="Abstract colorful wallpaper"
+        />
+      </div>
+    </div>
+
+    <!-- The menu element that will have the glass effect applied -->
+    <div class="menu-anchor">
+      <a
+        href="https://github.com/naughtyduk/liquidGL"
+        style="text-decoration: none"
+        target="_blank"
+      >
+        <div class="morph"></div>
+      </a>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/scripts/html2canvas.js"></script>
+    <script src="/scripts/liquidGL.js"></script>
+    <script>
+      let glassEffect; // Declare in a higher scope to be accessible across event listeners
+
+      document.addEventListener("DOMContentLoaded", () => {
+        initializeLiquidGL(); // Call immediately on DOM ready
+
+        // Ripples
+        $(".ripples").each(function () {
+          const $this = $(this);
+          $this.ripples({
+            resolution: 512,
+            dropRadius: 20,
+            perturbance: 0.04,
+            interactive: true,
+          });
+        });
+
+        // A function to initialize the glass effect and its controls
+        function initializeLiquidGL() {
+          let gui, glassFolder;
+          // Initialize the Liquid Glass effect on our menu
+          glassEffect = LiquidGL({
+            target: ".morph",
+            refraction: 0,
+            bevelDepth: 0.052,
+            bevelWidth: 0.211,
+            frost: 2,
+            shadow: true,
+            specular: true,
+            tilt: false,
+            tiltFactor: 5,
+            reveal: "fade",
+            on: {
+              init(instance) {
+                // Setup lil-gui controls only after LiquidGL is fully initialised
+                gui = new lil.GUI();
+                glassFolder = gui.addFolder("LiquidGL Effect");
+
+                glassFolder
+                  .add(instance.options, "refraction", 0, 0.1, 0.001)
+                  .name("Refraction");
+                glassFolder
+                  .add(instance.options, "bevelDepth", 0, 0.2, 0.001)
+                  .name("Bevel Depth");
+                glassFolder
+                  .add(instance.options, "bevelWidth", 0, 0.5, 0.001)
+                  .name("Bevel Width");
+                glassFolder
+                  .add(instance.options, "frost", 0, 10, 0.1)
+                  .name("Frost");
+                glassFolder.add(instance.options, "specular").name("Specular");
+                glassFolder
+                  .add(instance.options, "shadow")
+                  .name("Enable Shadow")
+                  .onChange((value) => {
+                    instance.setShadow(value);
+                  });
+                glassFolder
+                  .add(instance.options, "tilt")
+                  .name("Tilt")
+                  .onChange((v) => instance.setTilt(v));
+                glassFolder
+                  .add(instance.options, "tiltFactor", 0, 25, 0.1)
+                  .name("Tilt Factor");
+                glassFolder.add(instance.options, "reveal").name("reveal");
+                glassFolder.close();
+              },
+            },
+          });
+        }
+
+        window.addEventListener("load", function () {
+          // Lenis & GSAP ScrollTrigger integration
+          const lenis = new Lenis();
+
+          lenis.on("scroll", ScrollTrigger.update);
+
+          gsap.ticker.add((time) => {
+            lenis.raf(time * 1000);
+            if (glassEffect) {
+              glassEffect.render(); // Render in sync with Lenis
+            }
+          });
+
+          gsap.ticker.lagSmoothing(0);
+
+          /* --- Morph shape animation on scroll --- */
+          const morphEl = document.querySelector(".morph");
+          if (morphEl) {
+            gsap.set(morphEl, { transformOrigin: "50% 50%" });
+
+            const tl = gsap.timeline({
+              scrollTrigger: {
+                trigger: ".main-content",
+                start: "top top",
+                end: "bottom bottom",
+                scrub: true,
+              },
+            });
+
+            tl.to(morphEl, { borderRadius: "50%", duration: 1, ease: "none" })
+              .to(
+                morphEl,
+                {
+                  width: "12vw",
+                  height: "20vw",
+                  borderRadius: "1vw",
+                  duration: 1,
+                  ease: "none",
+                },
+                "+=1"
+              )
+              .to(
+                morphEl,
+                {
+                  width: "25vw",
+                  height: "8vw",
+                  borderRadius: "4vw",
+                  duration: 1,
+                  ease: "none",
+                },
+                "+=1"
+              );
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
