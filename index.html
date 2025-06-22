@@ -500,7 +500,6 @@
         fontsReady.then(() => {
           gsap.set(".split", { visibility: "visible" });
 
-          console.log('-- SplitText started');
           let split = SplitText.create(".split", {
             type: "lines",
             linesClass: "line",
@@ -538,7 +537,6 @@
 
         // A function to initialize the glass effect and its controls
         function initializeLiquidGL() {
-          console.log('-- init GL called');
           // Will hold the GUI objects once the effect is ready
           let gui, glassFolder;
 
@@ -550,6 +548,7 @@
             bevelWidth: 0.211,
             frost: 2,
             shadow: true,
+            reveal: "fade",
             on: {
               init(instance) {
                 // Setup lil-gui controls only after LiquidGL is fully initialised
@@ -577,8 +576,10 @@
                   .onChange((value) => {
                     instance.setShadow(value);
                   });
+                glassFolder
+                  .add(instance.options, "reveal")
+                  .name("reveal");
                 glassFolder.close();
-                console.log("LiquidGL initialised");
               },
             },
           });
@@ -591,6 +592,7 @@
               frost: 2,
               shadow: true,
               specular: true,
+              reveal: "fade",
             },
             ALIEN: {
               refraction: 0.073,
@@ -599,6 +601,7 @@
               frost: 2,
               shadow: true,
               specular: false,
+              reveal: "fade",
             },
             PULSE: {
               refraction: 0.03,
@@ -607,6 +610,7 @@
               frost: 0,
               shadow: false,
               specular: false,
+              reveal: "fade",
             },
             FROST: {
               refraction: 0,
@@ -615,6 +619,7 @@
               frost: 0.9,
               shadow: true,
               specular: true,
+              reveal: "fade",
             },
             EDGE: {
               refraction: 0.047,
@@ -623,6 +628,7 @@
               frost: 2,
               shadow: true,
               specular: false,
+              reveal: "fade",
             },
           };
 

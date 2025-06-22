@@ -165,7 +165,6 @@
         { passive: true }
       );
 
-      console.log("-- init GL called");
       this.initGL();
       this.resize();
 
@@ -543,9 +542,6 @@
         };
         if (Number.isFinite(this.scaleFactor)) h2cOpts.scale = this.scaleFactor;
 
-        console.log(
-          `LiquidGL: capture attempt ${attempt}, scale ${this.scaleFactor}`
-        );
         viewportCanvas = await html2canvas(document.body, h2cOpts);
       } catch (e) {
         console.warn("html2canvas failed", e);
@@ -561,7 +557,6 @@
         return;
       }
 
-      console.log(`LiquidGL: capture attempt ${attempt} succeeded`);
       this.updateTexture(viewportCanvas);
 
       this.textureWidth = viewportCanvas.width;
@@ -664,5 +659,3 @@
     return targetEl._LiquidGL;
   };
 })();
-
-console.log("-- SplitText started");
