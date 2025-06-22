@@ -447,6 +447,7 @@
     /* ----------------------------- */
     resize() {
       const rect = this.el.getBoundingClientRect();
+
       const dpr = Math.min(1, window.devicePixelRatio || 1);
       this.canvas.width = rect.width * dpr;
       this.canvas.height = rect.height * dpr;
@@ -476,6 +477,16 @@
       this.captureBusy = true;
 
       const rect = this.el.getBoundingClientRect();
+
+      const sw = this.snapshotTarget.scrollWidth;
+      const sh = this.snapshotTarget.scrollHeight;
+      if (sw === 0 || sh === 0) {
+        console.warn(
+          "LiquidGL: Skipping capture due to zero-size snapshot target"
+        );
+        this.captureBusy = false;
+        return;
+      }
 
       this.canvas.style.visibility = "hidden";
       const ignoreAttr = "data-liquid-ignore";
@@ -546,6 +557,12 @@
 
     /* ----------------------------- */
     updateTexture(srcCanvas) {
+      if (!srcCanvas || srcCanvas.width === 0 || srcCanvas.height === 0) {
+        console.warn(
+          "LiquidGL: Skipping texture update due to zero-size canvas"
+        );
+        return;
+      }
       const gl = this.gl;
       if (!this.texture) this.texture = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, this.texture);
