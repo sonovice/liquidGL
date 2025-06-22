@@ -312,6 +312,8 @@
             frost: 2,
             shadow: true,
             specular: true,
+            tilt: false,
+            tiltFactor: 5,
             reveal: "fade",
             on: {
               init(instance) {
@@ -338,6 +340,13 @@
                   .onChange((value) => {
                     instance.setShadow(value);
                   });
+                glassFolder
+                  .add(instance.options, "tilt")
+                  .name("Tilt")
+                  .onChange((v) => instance.setTilt(v));
+                glassFolder
+                  .add(instance.options, "tiltFactor", 0, 25, 0.1)
+                  .name("Tilt Factor");
                 glassFolder.add(instance.options, "reveal").name("reveal");
                 glassFolder.close();
               },

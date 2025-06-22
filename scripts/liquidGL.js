@@ -608,9 +608,8 @@
     _bindTiltHandlers() {
       if (this._tiltHandlersBound) return;
 
-      const maxTilt = Number.isFinite(this.options.tiltFactor)
-        ? this.options.tiltFactor
-        : 5;
+      const getMaxTilt = () =>
+        Number.isFinite(this.options.tiltFactor) ? this.options.tiltFactor : 5;
 
       const applyTilt = (clientX, clientY) => {
         // Ensure an eased but responsive transition while interacting
@@ -619,13 +618,14 @@
           this.el.style.transition =
             "transform 0.12s cubic-bezier(0.33,1,0.68,1)";
         }
-        const rect = this.el.getBoundingClientRect();
+        const rect = this._initialTiltRect || this.el.getBoundingClientRect();
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
         const dx = clientX - cx;
         const dy = clientY - cy;
         const pctX = dx / (rect.width / 2);
         const pctY = dy / (rect.height / 2);
+        const maxTilt = getMaxTilt();
         const rotY = pctX * maxTilt;
         const rotX = -pctY * maxTilt;
         this.el.style.transform = `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
@@ -669,6 +669,29 @@
       this.el.addEventListener("touchend", this._onTouchEnd, { passive: true });
 
       this._tiltHandlersBound = true;
+    }
+
+    /* ----------------------------- */
+    _unbindTiltHandlers() {
+      if (!this._tiltHandlersBound) return;
+      this.el.removeEventListener("mouseenter", this._onMouseEnter);
+      this.el.removeEventListener("mousemove", this._onMouseMove);
+      this.el.removeEventListener("mouseleave", this._onMouseLeave);
+      this.el.removeEventListener("touchstart", this._onTouchStart);
+      this.el.removeEventListener("touchmove", this._onTouchMove);
+      this.el.removeEventListener("touchend", this._onTouchEnd);
+      this._tiltHandlersBound = false;
+      this.el.style.transform = "";
+    }
+
+    /* ----------------------------- */
+    setTilt(enabled) {
+      this.options.tilt = !!enabled;
+      if (this.options.tilt) {
+        this._bindTiltHandlers();
+      } else {
+        this._unbindTiltHandlers();
+      }
     }
   }
 
