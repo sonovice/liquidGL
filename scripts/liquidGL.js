@@ -128,6 +128,7 @@
       this.initialY = 0;
       this.startTime = Date.now();
       this.renderLoopRunning = false;
+      this.scrollOffset = 0;
 
       if ("ResizeObserver" in window) {
         this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -144,18 +145,7 @@
         window.addEventListener("resize", debouncedResize, { passive: true });
       }
 
-      this.scrollOffset = window.scrollY;
-      this.lastCaptureScroll = window.scrollY;
-
       this.captureBusy = false;
-
-      window.addEventListener(
-        "scroll",
-        () => {
-          this.scrollOffset = window.scrollY;
-        },
-        { passive: true }
-      );
 
       this.initGL();
       this.resize();
@@ -508,6 +498,10 @@
           useCORS: true,
           backgroundColor: null,
           removeContainer: true,
+          width: this.snapshotTarget.scrollWidth,
+          height: this.snapshotTarget.scrollHeight,
+          scrollX: 0,
+          scrollY: 0,
           ignoreElements: (el) => {
             if (el.hasAttribute(ignoreAttr)) return true;
             if (el.tagName === "CANVAS") return true;
@@ -582,7 +576,7 @@
         const snapshotRect = this.snapshotTarget.getBoundingClientRect();
 
         const docX = rect.left - snapshotRect.left;
-        const docY = rect.top - snapshotRect.top;
+        const docY = rect.top - snapshotRect.top + this.scrollOffset;
 
         const leftUV = (docX * this.scaleFactor) / this.textureWidth;
         const topUV = (docY * this.scaleFactor) / this.textureHeight;

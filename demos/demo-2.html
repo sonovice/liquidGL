@@ -28,17 +28,43 @@
         -moz-osx-font-smoothing: grayscale;
         line-height: 1.5;
       }
+      .split-layout {
+        display: flex;
+        width: 100%;
+        height: 100svh;
+      }
+      .left-column,
+      .right-column {
+        width: 50%;
+        height: 100%;
+        position: relative;
+      }
+      .left-column {
+        overflow-y: auto;
+      }
+      .right-column {
+        background-color: var(--bg-color);
+      }
       .image-container {
         overflow: clip;
         position: relative;
         z-index: 1;
         transform: translate3d(0, 0, 0);
         height: 100svh;
-        padding: 5vw;
         background: #ececec;
       }
 
       @media (max-width: 768px) {
+        .split-layout {
+          flex-direction: column;
+        }
+        .left-column,
+        .right-column {
+          width: 100%;
+        }
+        .right-column {
+          display: none;
+        }
         .image-container {
           height: 100svh;
         }
@@ -52,7 +78,6 @@
         height: 100%;
         object-fit: cover;
         will-change: transform;
-        border-radius: 2.5vw;
       }
 
       /* --- Menu Styles --- */
@@ -63,6 +88,7 @@
         display: flex;
         position: fixed;
         inset: 0;
+        width: 50%;
         pointer-events: none;
       }
 
@@ -207,77 +233,82 @@
   </head>
   <body>
     <div class="ripples"></div>
-    <div class="main-content">
-      <div class="image-container">
-        <img
-          src="/assets/liquid-bkg-_0000_Comp-33.webp"
-          alt="Abstract colorful wallpaper"
-        />
-      </div>
-
-      <div class="image-container">
-        <img
-          src="/assets/liquid-bkg-_0001_Comp-183.webp"
-          alt="Abstract colorful wallpaper"
-        />
-      </div>
-
-      <div class="image-container">
-        <img
-          src="/assets/liquid-bkg-_0002_Comp-163.webp"
-          alt="Abstract colorful wallpaper"
-        />
-      </div>
-
-      <div class="image-container">
-        <img
-          src="/assets/liquid-bkg-_0003_Comp-151.webp"
-          alt="Abstract colorful wallpaper"
-        />
-      </div>
-
-      <div class="image-container">
-        <img
-          src="/assets/liquid-bkg-_0004_Comp-13.webp"
-          alt="Abstract colorful wallpaper"
-        />
-      </div>
-    </div>
-
-    <!-- The menu element that will have the glass effect applied -->
-    <div class="menu-anchor">
-      <a
-        href="https://github.com/naughtyduk/liquidGL"
-        style="text-decoration: none"
-        target="_blank"
-      >
-        <div class="menu-wrap">
-          <div class="menu-logo-wrap">
+    <div class="split-layout">
+      <div id="left-col" class="left-column">
+        <div class="main-content">
+          <div class="image-container">
             <img
-              src="https://cdn.prod.website-files.com/683cfe5728992d2318dfecd3/6843df24213921eaac90bcda_67a3d1a10eb7305c70724387_logo.svg"
-              loading="lazy"
-              alt="NaughtyDuk©"
-              class="menu-logo"
+              src="/assets/liquid-bkg-_0000_Comp-33.webp"
+              alt="Abstract colorful wallpaper"
             />
           </div>
-          <div class="menu-items-wrap">
-            <div class="menu-item-stack">
-              <p class="menu-item-text">LiquidGL by NaughtyDuk©</p>
-              <div class="download-wrapper">
-                <div class="download-link">
-                  <img
-                    src="/assets/download-icon.svg"
-                    alt="Download"
-                    class="download-icon"
-                  />
-                  <p class="small-text-link">Download</p>
-                </div>
-                <p class="version-text">v1.0.0</p>
-              </div>
-            </div>
+
+          <div class="image-container">
+            <img
+              src="/assets/liquid-bkg-_0001_Comp-183.webp"
+              alt="Abstract colorful wallpaper"
+            />
+          </div>
+
+          <div class="image-container">
+            <img
+              src="/assets/liquid-bkg-_0002_Comp-163.webp"
+              alt="Abstract colorful wallpaper"
+            />
+          </div>
+
+          <div class="image-container">
+            <img
+              src="/assets/liquid-bkg-_0003_Comp-151.webp"
+              alt="Abstract colorful wallpaper"
+            />
+          </div>
+
+          <div class="image-container">
+            <img
+              src="/assets/liquid-bkg-_0004_Comp-13.webp"
+              alt="Abstract colorful wallpaper"
+            />
           </div>
         </div>
-      </a>
+
+        <!-- The menu element that will have the glass effect applied -->
+        <div class="menu-anchor">
+          <a
+            href="https://github.com/naughtyduk/liquidGL"
+            style="text-decoration: none"
+            target="_blank"
+          >
+            <div class="menu-wrap">
+              <div class="menu-logo-wrap">
+                <img
+                  src="https://cdn.prod.website-files.com/683cfe5728992d2318dfecd3/6843df24213921eaac90bcda_67a3d1a10eb7305c70724387_logo.svg"
+                  loading="lazy"
+                  alt="NaughtyDuk©"
+                  class="menu-logo"
+                />
+              </div>
+              <div class="menu-items-wrap">
+                <div class="menu-item-stack">
+                  <p class="menu-item-text">LiquidGL by NaughtyDuk©</p>
+                  <div class="download-wrapper">
+                    <div class="download-link">
+                      <img
+                        src="/assets/download-icon.svg"
+                        alt="Download"
+                        class="download-icon"
+                      />
+                      <p class="small-text-link">Download</p>
+                    </div>
+                    <p class="version-text">v1.0.0</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+      <div class="right-column"></div>
     </div>
 
     <!-- Scripts -->
@@ -305,6 +336,7 @@
           let gui, glassFolder;
           // Initialize the Liquid Glass effect on our menu
           glassEffect = LiquidGL({
+            snapshot: ".main-content",
             target: ".menu-wrap",
             refraction: 0,
             bevelDepth: 0.052,
@@ -347,13 +379,29 @@
 
         window.addEventListener("load", function () {
           // Lenis & GSAP ScrollTrigger integration
-          const lenis = new Lenis();
+          const lenis = new Lenis({
+            wrapper: document.querySelector("#left-col"),
+          });
+
+          // Forward scroll events from the right column to Lenis
+          const rightColumn = document.querySelector(".right-column");
+          if (rightColumn) {
+            rightColumn.addEventListener(
+              "wheel",
+              (e) => {
+                lenis.onWheel(e);
+              },
+              { passive: false }
+            );
+          }
 
           lenis.on("scroll", ScrollTrigger.update);
 
           gsap.ticker.add((time) => {
             lenis.raf(time * 1000);
             if (glassEffect) {
+              // The snapshot target (.main-content) moves with the scroll,
+              // so we no longer need to manually adjust scrollOffset.
               glassEffect.render(); // Render in sync with Lenis
             }
           });
