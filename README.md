@@ -62,6 +62,7 @@ Next, initialise the library with the selector for your target element.
 <script>
   document.addEventListener("DOMContentLoaded", () => {
     const glassEffect = LiquidGL({
+      snapshot: "body",
       target: ".selector", // CSS selector for the element to glass-ify
       refraction: 0.01, // Base refraction strength (0–1)
       bevelDepth: 0.08, // Intensity of the edge bevel (0–1)
@@ -115,6 +116,7 @@ Next, initialise the library with the selector for your target element.
 
 | Option       | Type     | Default     | Description                                                                                                                                    |
 | ------------ | -------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `snapshot`   | string   | `'body'`    | CSS selector for the element to snapshot. Defaults to `<body>`.                                                                                |
 | `target`     | string   | `.selector` | CSS selector of the element that should receive the effect.                                                                                    |
 | `refraction` | number   | `0.01`      | Base refraction offset applied across the pane.                                                                                                |
 | `bevelDepth` | number   | `0.08`      | Additional refraction applied on the very edge to simulate depth.                                                                              |
@@ -155,6 +157,7 @@ Below are some ready-made configurations you can copy-paste. Feel free to tweak 
 ## Important Notes
 
 - Animated or video content **behind** the pane is not re-captured in real-time; the snapshot is static for performance and security reasons. Unfortunately there is no current workaround.
+- To improve performance on complex pages, you can snapshot a smaller, specific element like a background container instead of the whole page. Use the `snapshot` option with a CSS selector (e.g., `snapshot: '.my-background'`). This reduces texture memory and improves performance.
 - All page content must be present (visible in the DOM) **before** you initialise LiquidGL. Deferred/scroll-triggered animations should have their initial states set **in** `on.init`.
 - The initial capture is synchronous and may block the main thread momentarily; call `LiquidGL()` inside a `DOMContentLoaded` or `load` handler to avoid jank during critical rendering.
 - Extremely long documents can exceed GPU texture limits, causing memory or performance issues. Consider segmenting very long pages or reducing `scaleFactor` (see source).

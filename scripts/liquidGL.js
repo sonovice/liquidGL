@@ -77,6 +77,13 @@
           ? "relative"
           : this.el.style.position;
       this.el.appendChild(this.canvas);
+      this.snapshotTarget = document.querySelector(this.options.snapshot);
+      if (!this.snapshotTarget) {
+        console.warn(
+          `LiquidGL: Snapshot element "${this.options.snapshot}" not found. Falling back to <body>.`
+        );
+        this.snapshotTarget = document.body;
+      }
       // Try to obtain a WebGL context using a cascading fallback strategy so
       // that we cover quirks across mobile browsers (e.g. some expose only
       // WebGL2, others still rely on the historical "experimental-webgl"
@@ -141,8 +148,8 @@
 
         // Debounced body resize observer to recapture the background.
         const debouncedRecapture = debounce(() => this.captureFullPage(), 250);
-        const bodyResizeObserver = new ResizeObserver(debouncedRecapture);
-        bodyResizeObserver.observe(document.body);
+        const snapshotResizeObserver = new ResizeObserver(debouncedRecapture);
+        snapshotResizeObserver.observe(this.snapshotTarget);
       } else {
         const debouncedResize = debounce(() => {
           this.resize();
@@ -178,8 +185,8 @@
       // Calculate scaleFactor BEFORE taking the first snapshot so that we
       // never hand an undefined value to html2canvas (which would otherwise
       // result in NaNs and silent failures on iOS/Android).
-      const fullH = document.documentElement.scrollHeight;
-      const fullW = document.documentElement.scrollWidth;
+      const fullH = this.snapshotTarget.scrollHeight;
+      const fullW = this.snapshotTarget.scrollWidth;
       const maxTex = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) || 8192;
       let scale = Math.min(1, maxTex / fullW, maxTex / fullH);
       if (scale > 0.5) scale = 0.5; // save a bit of memory
@@ -512,8 +519,8 @@
       let viewportCanvas;
       try {
         // Recompute scaleFactor in case the page dimensions have changed
-        const fullH2 = document.documentElement.scrollHeight;
-        const fullW2 = document.documentElement.scrollWidth;
+        const fullH2 = this.snapshotTarget.scrollHeight;
+        const fullW2 = this.snapshotTarget.scrollWidth;
         const maxTex2 = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) || 8192;
         let newScale = Math.min(1, maxTex2 / fullW2, maxTex2 / fullH2);
         if (newScale > 0.5) newScale = 0.5;
@@ -542,7 +549,7 @@
         };
         if (Number.isFinite(this.scaleFactor)) h2cOpts.scale = this.scaleFactor;
 
-        viewportCanvas = await html2canvas(document.body, h2cOpts);
+        viewportCanvas = await html2canvas(this.snapshotTarget, h2cOpts);
       } catch (e) {
         console.warn("html2canvas failed", e);
       } finally {
@@ -604,8 +611,11 @@
 
       if (this.uBounds && this.uvScale[0] > 0) {
         const rect = this.el.getBoundingClientRect();
-        const docX = rect.left + window.scrollX;
-        const docY = rect.top + window.scrollY;
+        const snapshotRect = this.snapshotTarget.getBoundingClientRect();
+
+        const docX = rect.left - snapshotRect.left;
+        const docY = rect.top - snapshotRect.top;
+
         const leftUV = (docX * this.scaleFactor) / this.textureWidth;
         const topUV = (docY * this.scaleFactor) / this.textureHeight;
         gl.uniform4f(this.uBounds, leftUV, topUV, ...this.uvScale);
@@ -631,6 +641,7 @@
   window.LiquidGL = function (userOptions = {}) {
     const defaults = {
       target: ".menu-wrap",
+      snapshot: "body",
       refraction: 0.01,
       bevelDepth: 0.08,
       bevelWidth: 0.15,
