@@ -160,13 +160,17 @@ Below are some ready-made configurations you can copy-paste. Feel free to tweak 
 
 ## Other
 
-**Border-radius**
+**Exclude elements**
 
-> LiquidGL automatically inherits the `border-radius` of the `target` element, ensuring the refraction respects rounded corners without any extra configuration.
+> You can set elements to be ignored by the refraction using `data-liquid-ignore`. Add this attribute on the parent container of the element you wish to exclude.
 
 **Content Visibility**
 
 > It is recommended to use `z-index: 3;` on the content inside your target element to make it sit on top of the lens. You can also combine this with `mix-blend-mode: difference;` for better legibility.
+
+**Border-radius**
+
+> LiquidGL automatically inherits the `border-radius` of the `target` element, ensuring the refraction respects rounded corners without any extra configuration.
 
 ---
 

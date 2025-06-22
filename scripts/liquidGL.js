@@ -400,9 +400,8 @@
       const rect = this.el.getBoundingClientRect();
 
       this.canvas.style.visibility = "hidden";
-
-      const tempAttr = `data-liquid-ignore`;
-      this.el.setAttribute(tempAttr, "");
+      const ignoreAttr = "data-liquid-ignore";
+      this.el.setAttribute(ignoreAttr, "");
 
       let viewportCanvas;
       try {
@@ -429,7 +428,7 @@
           backgroundColor: null,
           removeContainer: true,
           ignoreElements: (el) => {
-            if (el.hasAttribute(tempAttr)) return true;
+            if (el.hasAttribute(ignoreAttr)) return true;
             if (el.tagName === "CANVAS") return true;
             if (el.tagName === "IMG" && isXOrigin(el.src)) return true;
             return false;
@@ -445,7 +444,7 @@
         console.warn("html2canvas failed", e);
       } finally {
         this.canvas.style.visibility = "visible";
-        this.el.removeAttribute(tempAttr);
+        this.el.removeAttribute(ignoreAttr);
         this.captureBusy = false;
       }
 
