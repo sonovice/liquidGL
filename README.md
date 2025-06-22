@@ -42,7 +42,7 @@ First, set up your HTML. The key is to have a parent element that will receive t
   <div class="fixed-container">
     <!-- This is the target for LiquidGL, where the glass refraction is applied -->
     <div class="selector">
-      <!-- Your content goes inside the target and doesnt get refracted -->
+      <!-- Your content goes inside the target -->
       <div class="content">
         <img src="/example.svg" alt="Alt Text" />
         <p>This example text content will appear on top of the glass.</p>
