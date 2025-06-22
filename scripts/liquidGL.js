@@ -129,7 +129,6 @@
       this.startTime = Date.now();
       this.renderLoopRunning = false;
       this.scrollOffset = 0;
-      /* Tilt interaction setup */
       this._tiltHandlersBound = false;
       this._isPointerInside = false;
 
@@ -164,7 +163,7 @@
       const fullW = this.snapshotTarget.scrollWidth;
       const maxTex = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) || 8192;
       let scale = Math.min(1, maxTex / fullW, maxTex / fullH);
-      if (scale > 0.5) scale = 0.5; // save a bit of memory
+      if (scale > 0.5) scale = 0.5;
       this.scaleFactor = scale;
 
       const startCapture = () => {
@@ -193,7 +192,6 @@
 
       this.setShadow(this.options.shadow);
 
-      /* Initialise tilt interactions if enabled */
       if (this.options.tilt) {
         this._bindTiltHandlers();
       }
@@ -612,7 +610,6 @@
         Number.isFinite(this.options.tiltFactor) ? this.options.tiltFactor : 5;
 
       const applyTilt = (clientX, clientY) => {
-        // Ensure an eased but responsive transition while interacting
         if (!this._tiltInteracting) {
           this._tiltInteracting = true;
           this.el.style.transition =
@@ -632,7 +629,7 @@
       };
 
       this._onMouseEnter = () => {
-        this._tiltInteracting = false; // reset flag so first move eases
+        this._tiltInteracting = false;
       };
       this._onTouchStart = (e) => {
         this._tiltInteracting = false;
@@ -644,9 +641,8 @@
 
       this._onMouseMove = (e) => applyTilt(e.clientX, e.clientY);
       this._onMouseLeave = () => {
-        // Ease back to original orientation
         this.el.style.transition =
-          "transform 0.4s cubic-bezier(0.33, 1, 0.68, 1)"; // easeOut
+          "transform 0.4s cubic-bezier(0.33, 1, 0.68, 1)";
         this.el.style.transform =
           "perspective(800px) rotateX(0deg) rotateY(0deg)";
       };
