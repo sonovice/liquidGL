@@ -35,17 +35,18 @@ Add **both** of the following scripts before you initialise LiquidGL (normally a
 
 ## Quick start
 
-First, set up your HTML. The key is to have a parent element that will receive the glass effect, and a child element for your content.
+Set up your HTML structure first. You will have a fixed parent element to wrap everything and place it over your page content, a `target` element that will receive the glass effect, and a child element for your content (excluded from glass effect).
 
 ```html
 <!-- Example HTML structure -->
 <body>
   <!-- A container to position your glass element above the body -->
   <div class="fixed-container">
-    <!-- This is the target for LiquidGL, where the glass refraction is applied -->
+    <!-- Fixed wrapper -->
     <div class="selector">
-      <!-- Your content goes inside the target -->
+      <!-- Target (glassified) -->
       <div class="content">
+        <!-- Content -->
         <img src="/example.svg" alt="Alt Text" />
         <p>This example text content will appear on top of the glass.</p>
       </div>
@@ -114,18 +115,18 @@ Next, initialise the library with the selector for your target element.
 
 ## Parameters
 
-| Option       | Type     | Default     | Description                                                                                                                                    |
-| ------------ | -------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `snapshot`   | string   | `'body'`    | CSS selector for the element to snapshot. Defaults to `<body>`.                                                                                |
-| `target`     | string   | `.selector` | CSS selector of the element that should receive the effect.                                                                                    |
-| `refraction` | number   | `0.01`      | Base refraction offset applied across the pane.                                                                                                |
-| `bevelDepth` | number   | `0.08`      | Additional refraction applied on the very edge to simulate depth.                                                                              |
-| `bevelWidth` | number   | `0.15`      | Width of the bevel zone, expressed as a fraction of the shortest side.                                                                         |
-| `frost`      | number   | `0`         | Size of the blur kernel in **pixels** for a frosted glass look.                                                                                |
-| `shadow`     | boolean  | `true`      | Toggles a subtle drop-shadow under the pane.                                                                                                   |
-| `specular`   | boolean  | `true`      | Enables animated specular highlights that move with time.                                                                                      |
-| `reveal`     | string   | `'fade'`    | - `None` - immediately render the `target` element.<br>- `Fade` - a smooth fade in of the `target` element, <i>this is the default option.</i> |
-| `on.init`    | function | `—`         | Runs once the first full render completes. Receives the instance.                                                                              |
+| Option       | Type     | Default     | Description                                                                                                 |
+| ------------ | -------- | ----------- | ----------------------------------------------------------------------------------------------------------- |
+| `snapshot`   | string   | `'body'`    | CSS selector for the element to snapshot. Defaults to `<body>`.                                             |
+| `target`     | string   | `.selector` | CSS selector of the element that should receive the effect.                                                 |
+| `refraction` | number   | `0.01`      | Base refraction offset applied across the pane.                                                             |
+| `bevelDepth` | number   | `0.08`      | Additional refraction applied on the very edge to simulate depth.                                           |
+| `bevelWidth` | number   | `0.15`      | Width of the bevel zone, expressed as a fraction of the shortest side.                                      |
+| `frost`      | number   | `0`         | Size of the blur kernel in **pixels** for a frosted glass look.                                             |
+| `shadow`     | boolean  | `true`      | Toggles a subtle drop-shadow under the pane.                                                                |
+| `specular`   | boolean  | `true`      | Enables animated specular highlights that move with time.                                                   |
+| `reveal`     | string   | `'fade'`    | - `None` - immediately render the `target` element.<br>- `Fade` - a smooth fade in of the `target` element. |
+| `on.init`    | function | `—`         | Runs once the first full render completes. Receives the instance.                                           |
 
 > The `target` parameter is required, all other parameters are optional.
 
