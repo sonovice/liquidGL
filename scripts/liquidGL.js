@@ -261,7 +261,13 @@
                   vec2 delta = v_uv - 0.5;
                   delta.x *= u_resolution.x / u_resolution.y;
                   vec2 dir = normalize(delta);
-        
+      
+                  // Add a safe-guard against normalize(0,0) which is undefined and can
+                  // cause a white pixel artifact on some GPUs.
+                  if (length(delta) == 0.0) {
+                    dir = vec2(0.0, 0.0);
+                  }
+
                   float edge = edgeFactor(v_uv, u_radius);
       
                   // A gentle, overall refraction for the main lens effect.
