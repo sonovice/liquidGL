@@ -72,7 +72,7 @@
         .right-column {
           width: 100%;
         }
-        .left-column {
+        .right-column {
           display: none;
         }
         .image-container {
@@ -80,6 +80,7 @@
         }
         .menu-anchor {
           bottom: 1rem;
+          width: 100% !important;
         }
       }
 
@@ -549,9 +550,9 @@
             frost: 2,
             shadow: true,
             specular: true,
-            reveal: "fade",
             tilt: true,
             tiltFactor: 10,
+            reveal: "fade",
             on: {
               init(instance) {
                 // Setup lil-gui controls only after LiquidGL is fully initialised
@@ -577,6 +578,13 @@
                   .onChange((value) => {
                     instance.setShadow(value);
                   });
+                glassFolder
+                  .add(instance.options, "tilt")
+                  .name("Tilt")
+                  .onChange((v) => instance.setTilt(v));
+                glassFolder
+                  .add(instance.options, "tiltFactor", 0, 25, 0.1)
+                  .name("Tilt Factor");
                 glassFolder.add(instance.options, "reveal").name("reveal");
                 glassFolder.close();
               },
