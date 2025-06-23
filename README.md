@@ -175,6 +175,19 @@ Below are some ready-made configurations you can copy-paste. Feel free to tweak 
 
 ---
 
+## Browser Support
+
+The liquidGL library is compatible with all WebGL enabled browsers on desktop, tablet and mobile devices, including Google Chrome, Safari and Firefox.
+
+| Browser        | Supported |
+| :------------- | :-------: |
+| Google Chrome  |    Yes    |
+| Safari         |    Yes    |
+| Firefox        |    Yes    |
+| Microsoft Edge |    Yes    |
+
+---
+
 ## Other
 
 **Exclude elements**
