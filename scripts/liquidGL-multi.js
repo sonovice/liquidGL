@@ -159,18 +159,17 @@
           float blend = 1.0 - smoothstep(0.0, 0.01, oob);
           vec2 sampleUV = mix(mapped, refracted, blend);
 
-          vec4 color;
-          if (u_frost > 0.0) {
-            float f = u_frost / u_resolution.x;
-            for(int i=-1;i<=1;i++){
-              for(int j=-1;j<=1;j++){
-                color += texture2D(u_tex, sampleUV + vec2(i,j)*f);
-              }
-            }
-            color /= 9.0;
-          } else {
-            color = texture2D(u_tex, sampleUV);
-          }
+          vec4 baseCol   = texture2D(u_tex, mapped);      // no refraction
+          vec4 refrCol   = texture2D(u_tex, sampleUV);    // with refraction
+
+          // How different are they?  0 = identical, 1 = extreme difference
+          float diff = clamp(length(refrCol.rgb - baseCol.rgb) * 4.0, 0.0, 1.0);
+
+          // Blend factor grows only when colours diverge AND we're near the centre
+          //    ( we gate it with the same centreBlend already used for offset )
+          float antiHalo = (1.0 - centreBlend) * diff;    // 0–15 % radius = 0, fades in by 45 %
+
+          vec4 final    = mix(refrCol, baseCol, antiHalo);
 
           // Mask pixels outside rounded rect when using global canvas
           vec2 p_px = (v_uv - 0.5) * u_resolution;
@@ -184,20 +183,20 @@
             float h = 0.0;
             h += smoothstep(0.4,0.0,distance(v_uv, lp1))*0.1;
             h += smoothstep(0.5,0.0,distance(v_uv, lp2))*0.08;
-            color.rgb += h;
+            final.rgb += h;
           }
 
           // Apply reveal fade if requested (same logic as single-lens build)
           if (u_revealType == 1) { // fade
-              color.rgb *= u_revealProgress;
-              color.a  *= u_revealProgress;
+              final.rgb *= u_revealProgress;
+              final.a  *= u_revealProgress;
           }
 
           // Apply rounded-rect mask
-          color.rgb *= inShape;
-          color.a   *= inShape;
+          final.rgb *= inShape;
+          final.a   *= inShape;
 
-          gl_FragColor = color;
+          gl_FragColor = final;
         }`;
 
       this.program = createProgram(this.gl, vsSource, fsSource);
@@ -442,7 +441,7 @@
 
       this.updateMetrics();
       this.setShadow(this.options.shadow);
-      if (this.options.tilt) this._bindTilt();
+      if (this.options.tilt) this._bindTiltHandlers();
     }
 
     /* ----------------------------- */
@@ -468,6 +467,16 @@
       const dpr = Math.min(1, window.devicePixelRatio || 1);
       const maxAllowed = Math.min(rect.width, rect.height) * dpr * 0.5;
       this.radiusPx = Math.min(brPx * dpr, maxAllowed);
+    }
+
+    /* ----------------------------- */
+    setTilt(enabled) {
+      this.options.tilt = !!enabled;
+      if (this.options.tilt) {
+        this._bindTiltHandlers();
+      } else {
+        this._unbindTiltHandlers();
+      }
     }
 
     /* ----------------------------- */
@@ -535,34 +544,162 @@
      *  CSS transforms on the lens element itself. The WebGL rendering is
      *  re-triggered so that specular highlights keep moving.
      * ------------------------------------------------*/
-    _bindTilt() {
-      const getMax = () =>
+    _bindTiltHandlers() {
+      if (this._tiltHandlersBound) return;
+
+      const getMaxTilt = () =>
         Number.isFinite(this.options.tiltFactor) ? this.options.tiltFactor : 5;
-      const apply = (x, y) => {
+
+      const applyTilt = (clientX, clientY) => {
+        if (!this._tiltInteracting) {
+          this._tiltInteracting = true;
+          this.el.style.transition =
+            "transform 0.12s cubic-bezier(0.33,1,0.68,1)";
+          // Prepare mirror canvas for this lens
+          this._createMirrorCanvas();
+        }
         const rect = this.el.getBoundingClientRect();
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
-        const pctX = (x - cx) / (rect.width / 2);
-        const pctY = (y - cy) / (rect.height / 2);
-        const max = getMax();
-        const rotY = pctX * max;
-        const rotX = -pctY * max;
+        const pctX = (clientX - cx) / (rect.width / 2);
+        const pctY = (clientY - cy) / (rect.height / 2);
+        const maxTilt = getMaxTilt();
+        const rotY = pctX * maxTilt;
+        const rotX = -pctY * maxTilt;
         this.el.style.transform = `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+        if (this._mirror) {
+          this._mirror.style.transformOrigin = `${cx}px ${cy}px`;
+          this._mirror.style.transform = `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+        }
+        // Ensure highlights update immediately
         this.renderer.render();
       };
-      this._enter = () =>
-        (this.el.style.transition =
-          "transform 0.12s cubic-bezier(0.33,1,0.68,1)");
-      this._move = (e) => apply(e.clientX, e.clientY);
-      this._leave = () => {
+
+      // Mouse events
+      this._onMouseEnter = () => {
+        this._tiltInteracting = false;
+        this._createMirrorCanvas();
+      };
+      this._onMouseMove = (e) => applyTilt(e.clientX, e.clientY);
+      this._onMouseLeave = () => {
         this.el.style.transition = "transform 0.4s cubic-bezier(0.33,1,0.68,1)";
         this.el.style.transform =
           "perspective(800px) rotateX(0deg) rotateY(0deg)";
+        this._destroyMirrorCanvas();
         this.renderer.render();
       };
-      this.el.addEventListener("mouseenter", this._enter, { passive: true });
-      this.el.addEventListener("mousemove", this._move, { passive: true });
-      this.el.addEventListener("mouseleave", this._leave, { passive: true });
+
+      // Touch events (single–finger only)
+      this._onTouchStart = (e) => {
+        this._tiltInteracting = false;
+        this._createMirrorCanvas();
+        if (e.touches && e.touches.length === 1) {
+          const t = e.touches[0];
+          applyTilt(t.clientX, t.clientY);
+        }
+      };
+      this._onTouchMove = (e) => {
+        if (e.touches && e.touches.length === 1) {
+          const t = e.touches[0];
+          applyTilt(t.clientX, t.clientY);
+        }
+      };
+      this._onTouchEnd = () => {
+        this.el.style.transition =
+          "transform 0.4s cubic-bezier(0.33, 1, 0.68, 1)";
+        this.el.style.transform =
+          "perspective(800px) rotateX(0deg) rotateY(0deg)";
+        this._destroyMirrorCanvas();
+        this.renderer.render();
+      };
+
+      this.el.addEventListener("mouseenter", this._onMouseEnter, {
+        passive: true,
+      });
+      this.el.addEventListener("mousemove", this._onMouseMove, {
+        passive: true,
+      });
+      this.el.addEventListener("mouseleave", this._onMouseLeave, {
+        passive: true,
+      });
+      this.el.addEventListener("touchstart", this._onTouchStart, {
+        passive: true,
+      });
+      this.el.addEventListener("touchmove", this._onTouchMove, {
+        passive: true,
+      });
+      this.el.addEventListener("touchend", this._onTouchEnd, {
+        passive: true,
+      });
+
+      this._tiltHandlersBound = true;
+    }
+
+    _unbindTiltHandlers() {
+      if (!this._tiltHandlersBound) return;
+      this.el.removeEventListener("mouseenter", this._onMouseEnter);
+      this.el.removeEventListener("mousemove", this._onMouseMove);
+      this.el.removeEventListener("mouseleave", this._onMouseLeave);
+      this.el.removeEventListener("touchstart", this._onTouchStart);
+      this.el.removeEventListener("touchmove", this._onTouchMove);
+      this.el.removeEventListener("touchend", this._onTouchEnd);
+      this._tiltHandlersBound = false;
+      this.el.style.transform = "";
+      this.renderer.render();
+    }
+
+    _createMirrorCanvas() {
+      if (this._mirror) return;
+      this._mirror = document.createElement("canvas");
+      Object.assign(this._mirror.style, {
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
+        zIndex: parseInt(this.renderer.canvas.style.zIndex || 2) + 1,
+        willChange: "transform",
+      });
+      this._mirrorCtx = this._mirror.getContext("2d");
+      document.body.appendChild(this._mirror);
+
+      // Clip mirror to lens rectangle (updates on resize)
+      const updateClip = () => {
+        const r = this.el.getBoundingClientRect();
+        const radius = `${this.radiusPx}px`;
+        this._mirror.style.clipPath = `inset(${r.top}px ${
+          innerWidth - r.right
+        }px ${innerHeight - r.bottom}px ${r.left}px round ${radius})`;
+        this._mirror.style.webkitClipPath = this._mirror.style.clipPath;
+      };
+      updateClip();
+      this._mirrorClipUpdater = updateClip;
+      window.addEventListener("resize", updateClip, { passive: true });
+
+      // Start blitting shared canvas into mirror every frame
+      const blit = () => {
+        if (!this._mirror) return;
+        const src = this.renderer.canvas;
+        if (
+          this._mirror.width !== src.width ||
+          this._mirror.height !== src.height
+        ) {
+          this._mirror.width = src.width;
+          this._mirror.height = src.height;
+        }
+        this._mirrorCtx.drawImage(src, 0, 0);
+        this._mirrorRAF = requestAnimationFrame(blit);
+      };
+      this._mirrorRAF = requestAnimationFrame(blit);
+    }
+
+    _destroyMirrorCanvas() {
+      if (!this._mirror) return;
+      cancelAnimationFrame(this._mirrorRAF);
+      window.removeEventListener("resize", this._mirrorClipUpdater);
+      this._mirror.remove();
+      this._mirror = this._mirrorCtx = null;
     }
   }
 
@@ -579,6 +716,7 @@
       frost: 0,
       shadow: true,
       specular: true,
+      reveal: "fade",
       tilt: false,
       tiltFactor: 5,
     };

@@ -53,6 +53,7 @@
         align-items: center;
         z-index: 9999;
         pointer-events: none; /* let children decide */
+        mix-blend-mode: difference;
       }
       .cards-wrapper {
         display: flex;
@@ -62,31 +63,26 @@
         pointer-events: auto; /* allow interaction */
       }
       .pricing-card {
-        width: 280px;
-        padding: 2rem 2.25rem 2.5rem;
+        width: 300px;
+        padding: 0;
         border-radius: 1rem;
         display: flex;
         flex-direction: column;
-        gap: 1.25rem;
         position: relative;
         overflow: clip;
-        /* Leave background transparent – WebGL lens will fill */
-        background: transparent;
+        color: #b7b7b7;
+        justify-content: center;
+        height: 385px;
       }
-      /* Fallback styles when WebGL is unavailable – add .no-webgl to <html> */
-      html.no-webgl .pricing-card {
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(30px) saturate(180%);
-      }
+
       .plan-name {
-        font-size: 1.25rem;
+        font-size: 1.35rem;
         font-weight: 700;
-        text-align: center;
+        letter-spacing: -0.02rem;
       }
       .price {
-        font-size: 2.25rem;
+        font-size: 2.5rem;
         font-weight: 800;
-        text-align: center;
         line-height: 1.1;
       }
       .price span {
@@ -98,9 +94,8 @@
         list-style: none;
         display: flex;
         flex-direction: column;
-        gap: 0.5rem;
-        font-size: 0.9rem;
-        color: var(--secondary-text);
+        gap: 0.75rem;
+        font-size: 0.95rem;
       }
       .cta-button {
         margin-top: 0.5rem;
@@ -109,8 +104,8 @@
         border-radius: 0.5rem;
         font-size: 1rem;
         font-weight: 600;
-        color: #fff;
-        background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+        color: #000000 !important;
+        background: #b7b7b7;
         cursor: pointer;
         transition: opacity 0.2s ease;
       }
@@ -118,11 +113,45 @@
         opacity: 0.9;
       }
 
+      .marquee {
+        width: 100%;
+        overflow: hidden;
+        pointer-events: none;
+        text-transform: uppercase;
+        font-weight: 800;
+        font-size: 5rem;
+      }
+
+      .marquee-content {
+        display: flex;
+        width: fit-content;
+        animation: marquee 12s linear infinite;
+      }
+
+      .marquee-content span {
+        white-space: nowrap;
+        padding: 0 1rem;
+      }
+
+      @keyframes marquee {
+        from {
+          transform: translateX(0);
+        }
+        to {
+          transform: translateX(-50%);
+        }
+      }
+
       /* Ensure foreground text renders above the WebGL canvas */
-      .pricing-card * {
+      .card-content {
         position: relative;
         z-index: 3;
-        mix-blend-mode: difference; /* stylish white-on-dark backgrounds */
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+      .card-content * {
+        color: inherit;
       }
 
       @media (max-width: 768px) {
@@ -166,39 +195,33 @@
     <div class="pricing-anchor">
       <div class="cards-wrapper">
         <!-- Basic Plan -->
-        <div class="pricing-card menu-wrap">
-          <h3 class="plan-name">Starter</h3>
-          <p class="price">$9<span>/mo</span></p>
-          <ul class="feature-list">
-            <li>✔ 5 Projects</li>
-            <li>✔ 10GB Storage</li>
-            <li>✔ Community Support</li>
-          </ul>
-          <button class="cta-button">Choose</button>
+        <div class="pricing-card">
+          <div class="marquee">
+            <div class="marquee-content">
+              <span>Glassify the web with liquidGL by NaughtyDuk©</span>
+              <span>Glassify the web with liquidGL by NaughtyDuk©</span>
+            </div>
+          </div>
         </div>
 
         <!-- Pro Plan -->
-        <div class="pricing-card menu-wrap">
-          <h3 class="plan-name">Pro</h3>
-          <p class="price">$29<span>/mo</span></p>
-          <ul class="feature-list">
-            <li>✔ 25 Projects</li>
-            <li>✔ 100GB Storage</li>
-            <li>✔ Priority Support</li>
-          </ul>
-          <button class="cta-button">Choose</button>
+        <div class="pricing-card">
+          <div class="marquee">
+            <div class="marquee-content">
+              <span>Glassify the web with liquidGL by NaughtyDuk©</span>
+              <span>Glassify the web with liquidGL by NaughtyDuk©</span>
+            </div>
+          </div>
         </div>
 
         <!-- Enterprise Plan -->
-        <div class="pricing-card menu-wrap">
-          <h3 class="plan-name">Enterprise</h3>
-          <p class="price">$99<span>/mo</span></p>
-          <ul class="feature-list">
-            <li>✔ Unlimited Projects</li>
-            <li>✔ 1TB Storage</li>
-            <li>✔ Dedicated Support</li>
-          </ul>
-          <button class="cta-button">Contact Us</button>
+        <div class="pricing-card">
+          <div class="marquee">
+            <div class="marquee-content">
+              <span>Glassify the web with liquidGL by NaughtyDuk©</span>
+              <span>Glassify the web with liquidGL by NaughtyDuk©</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -209,15 +232,82 @@
     <script>
       document.addEventListener("DOMContentLoaded", () => {
         window.glassEffect = LiquidGL({
-          target: ".menu-wrap",
+          target: ".pricing-card",
           refraction: 0.015,
           bevelDepth: 0.08,
           bevelWidth: 0.18,
           frost: 2,
           shadow: true,
           specular: true,
+          tilt: true,
+          tiltFactor: 5,
           reveal: "fade",
         });
+
+        // --- lil-gui for multi-lens setup ---
+        if (
+          window.glassEffect &&
+          Array.isArray(window.glassEffect) &&
+          window.glassEffect.length > 0
+        ) {
+          const gui = new lil.GUI();
+          const glassFolder = gui.addFolder("LiquidGL Effect");
+          const firstLens = window.glassEffect[0];
+
+          const updateAllLenses = (key, value) => {
+            window.glassEffect.forEach((lens) => {
+              lens.options[key] = value;
+              if (key === "shadow") {
+                lens.setShadow(value);
+              }
+              if (key === "tilt") {
+                lens.setTilt(value);
+              }
+            });
+          };
+
+          glassFolder
+            .add(firstLens.options, "refraction", 0, 0.1, 0.001)
+            .name("Refraction")
+            .onChange((value) => updateAllLenses("refraction", value));
+
+          glassFolder
+            .add(firstLens.options, "bevelDepth", 0, 0.2, 0.001)
+            .name("Bevel Depth")
+            .onChange((value) => updateAllLenses("bevelDepth", value));
+
+          glassFolder
+            .add(firstLens.options, "bevelWidth", 0, 0.5, 0.001)
+            .name("Bevel Width")
+            .onChange((value) => updateAllLenses("bevelWidth", value));
+
+          glassFolder
+            .add(firstLens.options, "frost", 0, 10, 0.1)
+            .name("Frost")
+            .onChange((value) => updateAllLenses("frost", value));
+
+          glassFolder
+            .add(firstLens.options, "specular")
+            .name("Specular")
+            .onChange((value) => updateAllLenses("specular", value));
+
+          glassFolder
+            .add(firstLens.options, "shadow")
+            .name("Enable Shadow")
+            .onChange((value) => updateAllLenses("shadow", value));
+
+          glassFolder
+            .add(firstLens.options, "tilt")
+            .name("Tilt")
+            .onChange((value) => updateAllLenses("tilt", value));
+
+          glassFolder
+            .add(firstLens.options, "tiltFactor", 0, 25, 0.1)
+            .name("Tilt Factor")
+            .onChange((value) => updateAllLenses("tiltFactor", value));
+
+          glassFolder.close();
+        }
       });
       window.addEventListener("load", function () {
         // Lenis & GSAP ScrollTrigger integration
