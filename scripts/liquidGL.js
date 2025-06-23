@@ -80,8 +80,11 @@
         document.querySelector(snapshotSelector) || document.body;
       if (!this.snapshotTarget) this.snapshotTarget = document.body;
 
-      // Handle resize – debounce for performance
       const onResize = debounce(() => {
+        if (window.visualViewport && window.visualViewport.scale !== 1) {
+          return;
+        }
+
         this._resizeCanvas();
         this.lenses.forEach((l) => l.updateMetrics());
         this.captureSnapshot();
@@ -244,7 +247,6 @@
       this._capturing = true;
       const ignoreAttr = "data-liquid-ignore";
 
-      // Hide renderer canvas and mark all lens elements to ignore
       this.canvas.style.visibility = "hidden";
       this.lenses.forEach((ln) => ln.el.setAttribute(ignoreAttr, ""));
 
@@ -318,7 +320,6 @@
 
       this.render();
 
-      // Fire delayed reveals once texture is ready
       if (this._pendingReveal.length) {
         this._pendingReveal.forEach((ln) => ln._reveal());
         this._pendingReveal.length = 0;
@@ -329,7 +330,6 @@
     addLens(element, options) {
       const lens = new LiquidGLLens(this, element, options);
       this.lenses.push(lens);
-      // If texture not yet ready, postpone reveal until after first capture
       if (!this.texture) {
         this._pendingReveal.push(lens);
       } else {
@@ -343,7 +343,6 @@
       const gl = this.gl;
       if (!this.texture) return;
 
-      // 1. Draw all lenses
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.useProgram(this.program);
@@ -355,7 +354,6 @@
       gl.uniform1f(this.u.time, time);
 
       this.lenses.forEach((lens) => {
-        // Sync lens geometry with any runtime CSS morphing
         lens.updateMetrics();
         if (lens._mirrorActive && lens._mirrorClipUpdater) {
           lens._mirrorClipUpdater();
@@ -363,7 +361,6 @@
         this._renderLens(lens);
       });
 
-      // 2. Copy shared canvas into any active mirrors
       this.lenses.forEach((ln) => {
         if (ln._mirrorActive && ln._mirrorCtx) {
           const mirror = ln._mirror;
@@ -378,12 +375,10 @@
         }
       });
 
-      // 3. Clear areas of shared canvas for active mirrors (remove static copy)
       const dpr = Math.min(1, window.devicePixelRatio || 1);
       this.lenses.forEach((ln) => {
         if (ln._mirrorActive && ln.rectPx) {
           const { left, top, width, height } = ln.rectPx;
-          // Expand by 2 device pixels on every side to avoid residual edge lines
           const expand = 2;
           const x = Math.max(0, Math.round(left * dpr) - expand);
           const y = Math.max(
@@ -412,7 +407,7 @@
     /* ----------------------------- */
     _renderLens(lens) {
       const gl = this.gl;
-      const rect = lens.rectPx; // {left,top,width,height} in CSS px
+      const rect = lens.rectPx;
       if (!rect) return;
 
       const dpr = Math.min(1, window.devicePixelRatio || 1);
@@ -425,7 +420,6 @@
       gl.viewport(x, y, w, h);
       gl.uniform2f(this.u.res, w, h);
 
-      // Bounds in UV space of the snapshot texture
       const docX = rect.left - this.snapshotTarget.getBoundingClientRect().left;
       const docY = rect.top - this.snapshotTarget.getBoundingClientRect().top;
       const leftUV = (docX * this.scaleFactor) / this.textureWidth;
@@ -455,7 +449,7 @@
       this.renderer = renderer;
       this.el = element;
       this.options = options;
-      this.rectPx = null; // updated in updateMetrics()
+      this.rectPx = null;
       this.radiusPx = 0;
       this.revealTypeIndex = this.options.reveal === "fade" ? 1 : 0;
       this._revealProgress = this.revealTypeIndex === 0 ? 1 : 0;
@@ -466,13 +460,11 @@
       this.el.style.transition = "none";
       this.el.style.opacity = 0;
 
-      // Ensure element is positioned for CSS transforms (tilt)
       this.el.style.position =
         this.el.style.position === "static"
           ? "relative"
           : this.el.style.position;
 
-      // Make underlying background transparent so canvas is visible
       const bgCol = window.getComputedStyle(this.el).backgroundColor;
       const rgbaMatch = bgCol.match(/rgba?\(([^)]+)\)/);
       this._bgColorComponents = null;
@@ -483,7 +475,6 @@
         this.el.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0)`;
       }
 
-      // Remove CSS fallback effects once WebGL is confirmed to be in use
       this.el.style.backdropFilter = "none";
       this.el.style.webkitBackdropFilter = "none";
       this.el.style.backgroundImage = "none";
@@ -493,7 +484,6 @@
       this.setShadow(this.options.shadow);
       if (this.options.tilt) this._bindTiltHandlers();
 
-      // Observe element for geometry changes (e.g., GSAP morphs)
       if (typeof ResizeObserver !== "undefined" && !this._sizeObs) {
         this._sizeObs = new ResizeObserver(() => {
           this.updateMetrics();
@@ -527,7 +517,6 @@
       const maxAllowed = Math.min(rect.width, rect.height) * dpr * 0.5;
       this.radiusPx = Math.min(brPx * dpr, maxAllowed);
 
-      // Ensure shadow layer morphs with the lens
       if (this._shadowSyncFn) {
         this._shadowSyncFn();
       }
@@ -550,7 +539,6 @@
       const SHADOW_VAL =
         "0 10px 30px rgba(0,0,0,0.1), 0 0 0 0.5px rgba(0,0,0,0.05)";
 
-      // Helper to keep the separate shadow layer in the right place/size
       const syncShadow = () => {
         if (!this._shadowEl) return;
         const r = this.el.getBoundingClientRect();
@@ -562,11 +550,8 @@
       };
 
       if (enabled) {
-        // Apply a standard shadow directly (still useful in most cases)
         this.el.style.boxShadow = SHADOW_VAL;
 
-        // Create an out-of-band (document-level) shadow that is NOT inside any
-        // mix-blend-mode or clipping context, guaranteeing visibility.
         if (!this._shadowEl) {
           this._shadowEl = document.createElement("div");
           Object.assign(this._shadowEl.style, {
@@ -578,7 +563,6 @@
           });
           document.body.appendChild(this._shadowEl);
 
-          // Keep in sync on resize/scroll
           this._shadowSyncFn = syncShadow;
           window.addEventListener("resize", this._shadowSyncFn, {
             passive: true,
@@ -586,7 +570,6 @@
         }
         syncShadow();
       } else {
-        // Remove separate layer if it exists
         if (this._shadowEl) {
           window.removeEventListener("resize", this._shadowSyncFn);
           this._shadowEl.remove();
@@ -599,13 +582,12 @@
     /* ----------------------------- */
     _reveal() {
       if (this.revealTypeIndex === 0) {
-        // No reveal – just show immediately
         this.el.style.opacity = this.originalOpacity || 1;
         this._revealProgress = 1;
         return;
       }
 
-      if (this.renderer._revealAnimating) return; // Another lens controls the animation
+      if (this.renderer._revealAnimating) return;
 
       this.renderer._revealAnimating = true;
 
@@ -615,7 +597,6 @@
       const animate = () => {
         const progress = Math.min(1, (performance.now() - start) / dur);
 
-        // Update all lenses uniformly
         this.renderer.lenses.forEach((ln) => {
           ln._revealProgress = progress;
           ln.el.style.opacity = (ln.originalOpacity || 1) * progress;
@@ -627,7 +608,6 @@
           }
         });
 
-        // Fade shared canvas
         this.renderer.canvas.style.opacity = String(progress);
 
         this.renderer.render();
@@ -635,7 +615,6 @@
         if (progress < 1) {
           requestAnimationFrame(animate);
         } else {
-          // Cleanup
           this.renderer._revealAnimating = false;
           this.renderer.lenses.forEach((ln) => {
             ln.el.style.transition = ln.originalTransition || "";
@@ -646,11 +625,8 @@
       requestAnimationFrame(animate);
     }
 
-    /* --------------------------------------------------
-     *  Very similar tilt logic to the original library – but only updates
-     *  CSS transforms on the lens element itself. The WebGL rendering is
-     *  re-triggered so that specular highlights keep moving.
-     * ------------------------------------------------*/
+    /* ----------------------------- */
+
     _bindTiltHandlers() {
       if (this._tiltHandlersBound) return;
 
@@ -662,7 +638,6 @@
           this._tiltInteracting = true;
           this.el.style.transition =
             "transform 0.12s cubic-bezier(0.33,1,0.68,1)";
-          // Prepare mirror canvas for this lens
           this._createMirrorCanvas();
           if (this._mirror) {
             this._mirror.style.transition =
@@ -677,7 +652,6 @@
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
 
-        // Cache pivot so reset uses identical origin (prevents jump)
         this._pivotOrigin = `${cx}px ${cy}px`;
 
         const pctX = (clientX - cx) / (rect.width / 2);
@@ -694,17 +668,14 @@
           this._mirror.style.transform = transformStr;
         }
 
-        // Keep the separate shadow layer glued to the element while tilting
         if (this._shadowEl) {
           this._shadowEl.style.transformOrigin = "50% 50%";
           this._shadowEl.style.transform = transformStr;
         }
 
-        // Ensure highlights update immediately
         this.renderer.render();
       };
 
-      // Mouse events
       this._onMouseEnter = () => {
         this._tiltInteracting = false;
         this._createMirrorCanvas();
@@ -720,7 +691,6 @@
           this._mirror.style.transformOrigin = this._pivotOrigin || "50% 50%";
           this._mirror.style.transform =
             "perspective(800px) rotateX(0deg) rotateY(0deg)";
-          // Remove mirror after transition ends (fallback timeout 450ms)
           const clean = () => this._destroyMirrorCanvas();
           this._mirror.addEventListener("transitionend", clean, {
             once: true,
@@ -740,7 +710,6 @@
         smoothReset();
       };
 
-      // Touch events (single–finger only)
       this._onTouchStart = (e) => {
         this._tiltInteracting = false;
         this._createMirrorCanvas();
@@ -810,7 +779,6 @@
       this._mirrorCtx = this._mirror.getContext("2d");
       document.body.appendChild(this._mirror);
 
-      // Clip mirror to lens rectangle (updates on resize)
       const updateClip = () => {
         const r = this.el.getBoundingClientRect();
         const radius = `${this.radiusPx}px`;
@@ -823,8 +791,7 @@
       this._mirrorClipUpdater = updateClip;
       window.addEventListener("resize", updateClip, { passive: true });
 
-      // Mirror content will be copied each render pass
-      this._mirrorActive = true; // flag for renderer
+      this._mirrorActive = true;
     }
 
     _destroyMirrorCanvas() {
@@ -838,7 +805,7 @@
   }
 
   /* --------------------------------------------------
-   *  Public factory
+   *  Public API
    * ------------------------------------------------*/
   window.LiquidGL = function (userOptions = {}) {
     const defaults = {
@@ -856,9 +823,6 @@
     };
     const options = { ...defaults, ...userOptions };
 
-    // --------------------------------------------------
-    // 1) Quick capability check – run once per page
-    // --------------------------------------------------
     if (typeof window.__LiquidGLNoWebGL__ === "undefined") {
       const testCanvas = document.createElement("canvas");
       const testCtx =
@@ -874,14 +838,12 @@
       console.warn(
         "LiquidGL: WebGL not available – falling back to CSS backdrop-filter."
       );
-      // Nothing else to do; leave the elements with their CSS fallback styles.
       const fallbackNodes = document.querySelectorAll(options.target);
       return fallbackNodes.length === 1
         ? fallbackNodes[0]
         : Array.from(fallbackNodes);
     }
 
-    // Create (or reuse) the shared renderer
     let renderer = window.__LiquidGLRenderer__;
     if (!renderer) {
       renderer = new LiquidGLRenderer(options.snapshot);
@@ -900,7 +862,6 @@
       renderer.addLens(el, options)
     );
 
-    // Kick off the render loop (one per page)
     if (!renderer._rafId) {
       const loop = () => {
         renderer.render();
