@@ -635,20 +635,38 @@
             this._mirror.style.transition =
               "transform 0.12s cubic-bezier(0.33,1,0.68,1)";
           }
+          if (this._shadowEl) {
+            this._shadowEl.style.transition =
+              "transform 0.12s cubic-bezier(0.33,1,0.68,1)";
+          }
         }
         const rect = this.el.getBoundingClientRect();
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
+
+        // Cache pivot so reset uses identical origin (prevents jump)
+        this._pivotOrigin = `${cx}px ${cy}px`;
+
         const pctX = (clientX - cx) / (rect.width / 2);
         const pctY = (clientY - cy) / (rect.height / 2);
         const maxTilt = getMaxTilt();
         const rotY = pctX * maxTilt;
         const rotX = -pctY * maxTilt;
-        this.el.style.transform = `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+        const transformStr = `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+
+        this.el.style.transform = transformStr;
+
         if (this._mirror) {
-          this._mirror.style.transformOrigin = `${cx}px ${cy}px`;
-          this._mirror.style.transform = `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+          this._mirror.style.transformOrigin = this._pivotOrigin;
+          this._mirror.style.transform = transformStr;
         }
+
+        // Keep the separate shadow layer glued to the element while tilting
+        if (this._shadowEl) {
+          this._shadowEl.style.transformOrigin = "50% 50%";
+          this._shadowEl.style.transform = transformStr;
+        }
+
         // Ensure highlights update immediately
         this.renderer.render();
       };
@@ -665,7 +683,8 @@
           "perspective(800px) rotateX(0deg) rotateY(0deg)";
         if (this._mirror) {
           this._mirror.style.transition =
-            "transform 0.4s cubic-bezier(0.33,1,0.68,1)";
+            "transform 0.4s cubic-bezier(0.33, 1, 0.68, 1)";
+          this._mirror.style.transformOrigin = this._pivotOrigin || "50% 50%";
           this._mirror.style.transform =
             "perspective(800px) rotateX(0deg) rotateY(0deg)";
           // Remove mirror after transition ends (fallback timeout 450ms)
@@ -673,7 +692,15 @@
           this._mirror.addEventListener("transitionend", clean, {
             once: true,
           });
-          setTimeout(clean, 450);
+          setTimeout(clean, 350);
+        }
+
+        if (this._shadowEl) {
+          this._shadowEl.style.transition =
+            "transform 0.4s cubic-bezier(0.33,1,0.68,1)";
+          this._shadowEl.style.transformOrigin = "50% 50%";
+          this._shadowEl.style.transform =
+            "perspective(800px) rotateX(0deg) rotateY(0deg)";
         }
       };
       this._onMouseLeave = () => {
@@ -765,10 +792,6 @@
 
       // Mirror content will be copied each render pass
       this._mirrorActive = true; // flag for renderer
-
-      // Hide out-of-band shadow while element tilts so the static shadow
-      // doesn't appear to detach from the card.
-      if (this._shadowEl) this._shadowEl.style.display = "none";
     }
 
     _destroyMirrorCanvas() {
@@ -778,9 +801,6 @@
       this._mirror = this._mirrorCtx = null;
 
       this._mirrorActive = false;
-
-      // Restore shadow layer now that tilt has ended.
-      if (this._shadowEl) this._shadowEl.style.display = "";
     }
   }
 
