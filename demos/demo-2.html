@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Demo 2 - LiquidGL WebGL - NaughtyDuk©</title>
+    <title>Demo 2 - liquidGL WebGL - NaughtyDuk©</title>
     <link rel="icon" href="/assets/favicon.ico" />
     <style>
       :root {
@@ -78,7 +78,7 @@
         .image-container {
           height: 100svh;
         }
-        .menu-anchor {
+        .card-anchor {
           bottom: 1rem;
           width: 100% !important;
         }
@@ -91,8 +91,8 @@
         will-change: transform;
       }
 
-      /* --- Menu Styles --- */
-      .menu-anchor {
+      /* --- Card Styles --- */
+      .card-anchor {
         z-index: 9999;
         justify-content: center;
         align-items: center;
@@ -101,9 +101,10 @@
         inset: 0;
         width: 50%;
         pointer-events: none;
+        mix-blend-mode: difference;
       }
 
-      .menu-anchor a {
+      .card-anchor a {
         pointer-events: auto;
       }
 
@@ -389,7 +390,6 @@
       .credit-card * {
         position: relative;
         z-index: 3;
-        mix-blend-mode: difference;
       }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
@@ -441,7 +441,7 @@
         </div>
 
         <!-- The menu element that will have the glass effect applied -->
-        <div class="menu-anchor">
+        <div class="card-anchor">
           <a
             href="https://github.com/naughtyduk/liquidGL"
             style="text-decoration: none"
@@ -519,7 +519,7 @@
 
     <!-- Scripts -->
     <script src="/scripts/html2canvas.js"></script>
-    <script src="/scripts/liquidGL.js"></script>
+    <script src="/scripts/liquidGL-multi.js"></script>
     <script>
       let glassEffect; // Declare in a higher scope to be accessible across event listeners
 
@@ -626,10 +626,13 @@
 
           gsap.ticker.add((time) => {
             lenis.raf(time * 1000);
-            if (glassEffect) {
-              // The snapshot target (.main-content) moves with the scroll,
-              // so we no longer need to manually adjust scrollOffset.
-              glassEffect.render(); // Render in sync with Lenis
+            if (window.glassEffect) {
+              if (Array.isArray(window.glassEffect)) {
+                if (window.__LiquidGLRenderer__)
+                  window.__LiquidGLRenderer__.render();
+              } else if (!window.glassEffect.options.specular) {
+                window.glassEffect.render();
+              }
             }
           });
 

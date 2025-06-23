@@ -101,8 +101,12 @@ Next, initialise the library with the selector for your target element.
 
     gsap.ticker.add((time) => {
       lenis.raf(time * 1000);
-      if (glassEffect) {
-        glassEffect.render(); // Render in sync with Lenis
+      if (window.glassEffect) {
+        if (Array.isArray(window.glassEffect)) {
+          if (window.__LiquidGLRenderer__) window.__LiquidGLRenderer__.render();
+        } else if (!window.glassEffect.options.specular) {
+          window.glassEffect.render();
+        }
       }
     });
 

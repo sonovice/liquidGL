@@ -354,7 +354,14 @@
       const time = (Date.now() - this.startTime) / 1000;
       gl.uniform1f(this.u.time, time);
 
-      this.lenses.forEach((lens) => this._renderLens(lens));
+      this.lenses.forEach((lens) => {
+        // Sync lens geometry with any runtime CSS morphing
+        lens.updateMetrics();
+        if (lens._mirrorActive && lens._mirrorClipUpdater) {
+          lens._mirrorClipUpdater();
+        }
+        this._renderLens(lens);
+      });
 
       // 2. Copy shared canvas into any active mirrors
       this.lenses.forEach((ln) => {
@@ -485,6 +492,15 @@
       this.updateMetrics();
       this.setShadow(this.options.shadow);
       if (this.options.tilt) this._bindTiltHandlers();
+
+      // Observe element for geometry changes (e.g., GSAP morphs)
+      if (typeof ResizeObserver !== "undefined" && !this._sizeObs) {
+        this._sizeObs = new ResizeObserver(() => {
+          this.updateMetrics();
+          this.renderer.render();
+        });
+        this._sizeObs.observe(this.el);
+      }
     }
 
     /* ----------------------------- */
