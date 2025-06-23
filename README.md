@@ -65,7 +65,7 @@ Next, initialise the library with the selector for your target element.
 <script>
   document.addEventListener("DOMContentLoaded", () => {
     const glassEffect = LiquidGL({
-      snapshot: "body",
+      snapshot: "body", // The area used for refraction, <body> recommended and default
       target: ".selector", // CSS selector for the element to glass-ify
       refraction: 0.01, // Base refraction strength (0–1)
       bevelDepth: 0.08, // Intensity of the edge bevel (0–1)
