@@ -1,8 +1,8 @@
-# LiquidGL – Ultra-light glassmorphism for the web
+# liquidGL – Ultra-light glassmorphism for the web
 
-<a href="https://liquidgl.naughtyduk.com"><img src="/assets/liquidGlass-promo.gif" alt="LiquidGL" style="width: 100%"/></a>
+<a href="https://liquidgl.naughtyduk.com"><img src="/assets/liquidGlass-promo.gif" alt="liquidGL" style="width: 100%"/></a>
 
-LiquidGL turns any fixed-position element into a perfectly refracted, glossy "glass pane" rendered in WebGL.
+liquidGL turns any fixed-position element into a perfectly refracted, glossy "glass pane" rendered in WebGL.
 
 <a href="https://liquidgl.naughtyduk.com" target="_blank" rel="noopener noreferrer"><strong>TRY IT OUT</strong></a>
 
@@ -10,13 +10,13 @@ LiquidGL turns any fixed-position element into a perfectly refracted, glossy "gl
 
 ## Overview
 
-`LiquidGL` recreates Apple's upcoming "Liquid Glass" aesthetic in the browser with an ultra-light WebGL shader. WebGL cannot read live pixels for security reasons, the library takes a single high-resolution snapshot of the page when you call `LiquidGL()`. This keeps performance smooth, but it also means the pane can't refract content that changes afterwards, such as playing video or animations. Your page can still have video and animations, they just won't be refracted through the lens in real time.
+`liquidGL` recreates Apple's upcoming "Liquid Glass" aesthetic in the browser with an ultra-light WebGL shader. WebGL cannot read live pixels for security reasons, the library takes a single high-resolution snapshot of the page when you call `LiquidGL()`. This keeps performance smooth, but it also means the pane can't refract content that changes afterwards, such as playing video or animations. Your page can still have video and animations, they just won't be refracted through the lens in real time.
 
 ---
 
 ## Prerequisites
 
-Add **both** of the following scripts before you initialise LiquidGL (normally at the end of the `<body>`):
+Add **both** of the following scripts before you initialise liquidGL (normally at the end of the `<body>`):
 
 ```html
 <!-- html2canvas – DOM snapshotter (required) -->
@@ -29,7 +29,7 @@ Add **both** of the following scripts before you initialise LiquidGL (normally a
 <script src="/scripts/liquidGL.js" defer></script>
 ```
 
-> `html2canvas` provides the high-resolution snapshot of the page background that LiquidGL refracts. The library will throw if either dependency is missing.
+> `html2canvas` provides the high-resolution snapshot of the page background that liquidGL refracts. The library will throw if either dependency is missing.
 
 ---
 
@@ -74,12 +74,12 @@ Next, initialise the library with the selector for your target element.
       reveal: "fade", // Reveal animation
       on: {
         init(instance) {
-          // The `init` callback fires once LiquidGL has taken its snapshot
+          // The `init` callback fires once liquidGL has taken its snapshot
           // and rendered the first frame. It's the ideal place to hide or
           // prepare elements for reveal animations (e.g. with GSAP, ScrollTrigger)
           // because it ensures the content is visible to the snapshot before
           // you hide it from the user.
-          console.log("LiquidGL ready!", instance);
+          console.log("liquidGL ready!", instance);
         },
       },
     });
@@ -152,8 +152,8 @@ Below are some ready-made configurations you can copy-paste. Feel free to tweak 
 | :------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Is there a resize handler?                                    | Yes resize is handled in the library and debounced to 250ms for performance.                                                                                                                                                                                                                                                                                         |
 | Does the effect work on mobile?                               | Yes the library handles all 3 versions of WebGL and provides a frosted CSS `backdrop-filter` as a backup for older devices.                                                                                                                                                                                                                                          |
-| I have a preloader, how should I initialise LiquidGL?         | Run your preloader as normal, then once the preloader disappears and page content is visible, you can call `LiquidGL();`.                                                                                                                                                                                                                                            |
-| What is the correct way to use LiquidGL with page animations? | Lets say you have a preloader, above the fold intro animations and scroll animations on your page. You would:<br><br>1) animate your preloader and intro animations<br>2) once complete call `LiquidGL();`<br>3) in the `on.init();` callback, set your initial states for elements, i.e setting the start position of any animations like transforms, SplitText etc |
+| I have a preloader, how should I initialise liquidGL?         | Run your preloader as normal, then once the preloader disappears and page content is visible, you can call `LiquidGL();`.                                                                                                                                                                                                                                            |
+| What is the correct way to use liquidGL with page animations? | Lets say you have a preloader, above the fold intro animations and scroll animations on your page. You would:<br><br>1) animate your preloader and intro animations<br>2) once complete call `LiquidGL();`<br>3) in the `on.init();` callback, set your initial states for elements, i.e setting the start position of any animations like transforms, SplitText etc |
 
 ---
 
@@ -161,7 +161,7 @@ Below are some ready-made configurations you can copy-paste. Feel free to tweak 
 
 - Animated or video content **behind** the pane is not re-captured in real-time; the snapshot is static for performance and security reasons. Unfortunately there is no current workaround.
 - To improve performance on complex pages, you can snapshot a smaller, specific element like a background container instead of the whole page. Use the `snapshot` option with a CSS selector (e.g., `snapshot: '.my-background'`). This reduces texture memory and improves performance.
-- All page content must be present (visible in the DOM) **before** you initialise LiquidGL. Deferred/scroll-triggered animations should have their initial states set **in** `on.init`.
+- All page content must be present (visible in the DOM) **before** you initialise liquidGL. Deferred/scroll-triggered animations should have their initial states set **in** `on.init`.
 - The initial capture is synchronous and may block the main thread momentarily; call `LiquidGL()` inside a `DOMContentLoaded` or `load` handler to avoid jank during critical rendering.
 - Extremely long documents can exceed GPU texture limits, causing memory or performance issues. Consider segmenting very long pages or reducing `scaleFactor` (see source).
 - As with all WebGL effects, any **image** content inside the `target` element must have permissive `Access-Control-Allow-Origin` headers set to prevent CORS issues.
@@ -180,7 +180,7 @@ Below are some ready-made configurations you can copy-paste. Feel free to tweak 
 
 **Border-radius**
 
-> LiquidGL automatically inherits the `border-radius` of the `target` element, ensuring the refraction respects rounded corners without any extra configuration. If you animate the `border-radius` of your `target` element i.e on scroll, the bevel will animate in real time to remain in sync.
+> liquidGL automatically inherits the `border-radius` of the `target` element, ensuring the refraction respects rounded corners without any extra configuration. If you animate the `border-radius` of your `target` element i.e on scroll, the bevel will animate in real time to remain in sync.
 
 ---
 

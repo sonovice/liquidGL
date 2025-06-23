@@ -1,13 +1,8 @@
 /*
- * LiquidGL – Multi-lens edition (single shared WebGL context)
+ * liquidGL – Ultra-light glassmorphism for the web
  * -----------------------------------------------------------------------------
- * This build extends the original LiquidGL idea so that **one** snapshot
- * and **one** WebGL context are shared by any number of glass panes on the page.
- * The public API is intentionally the same:
- *   const pane = LiquidGL({ target: '.selector' });
- * If the selector matches multiple elements, an **array** of panes is returned.
  *
- * Author: NaughtyDuk© – https://liquid.naughtyduk.com
+ * Author: NaughtyDuk© – https://liquidgl.naughtyduk.com
  * Licence: MIT
  */
 
@@ -517,10 +512,53 @@
 
     /* ----------------------------- */
     setShadow(enabled) {
+      this.options.shadow = !!enabled;
+
+      const SHADOW_VAL =
+        "0 10px 30px rgba(0,0,0,0.1), 0 0 0 0.5px rgba(0,0,0,0.05)";
+
+      // Helper to keep the separate shadow layer in the right place/size
+      const syncShadow = () => {
+        if (!this._shadowEl) return;
+        const r = this.el.getBoundingClientRect();
+        this._shadowEl.style.left = `${r.left}px`;
+        this._shadowEl.style.top = `${r.top}px`;
+        this._shadowEl.style.width = `${r.width}px`;
+        this._shadowEl.style.height = `${r.height}px`;
+        this._shadowEl.style.borderRadius = `${this.radiusPx}px`;
+      };
+
       if (enabled) {
-        this.el.style.boxShadow =
-          "0 10px 30px rgba(0,0,0,0.1), 0 0 0 0.5px rgba(0,0,0,0.05)";
+        // Apply a standard shadow directly (still useful in most cases)
+        this.el.style.boxShadow = SHADOW_VAL;
+
+        // Create an out-of-band (document-level) shadow that is NOT inside any
+        // mix-blend-mode or clipping context, guaranteeing visibility.
+        if (!this._shadowEl) {
+          this._shadowEl = document.createElement("div");
+          Object.assign(this._shadowEl.style, {
+            position: "fixed",
+            pointerEvents: "none",
+            zIndex: parseInt(this.renderer.canvas.style.zIndex || 2) - 1 || 1,
+            boxShadow: SHADOW_VAL,
+            willChange: "transform, width, height",
+          });
+          document.body.appendChild(this._shadowEl);
+
+          // Keep in sync on resize/scroll
+          this._shadowSyncFn = syncShadow;
+          window.addEventListener("resize", this._shadowSyncFn, {
+            passive: true,
+          });
+        }
+        syncShadow();
       } else {
+        // Remove separate layer if it exists
+        if (this._shadowEl) {
+          window.removeEventListener("resize", this._shadowSyncFn);
+          this._shadowEl.remove();
+          this._shadowEl = null;
+        }
         this.el.style.boxShadow = this.originalShadow;
       }
     }
