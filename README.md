@@ -119,20 +119,20 @@ Next, initialise the library with the selector for your target element.
 
 ## Parameters
 
-| Option       | Type     | Default     | Description                                                                                                 |
-| ------------ | -------- | ----------- | ----------------------------------------------------------------------------------------------------------- |
-| `snapshot`   | string   | `'body'`    | CSS selector for the element to snapshot. Defaults to `<body>`.                                             |
-| `target`     | string   | `.selector` | CSS selector of the element that should receive the effect.                                                 |
-| `refraction` | number   | `0.01`      | Base refraction offset applied across the pane.                                                             |
-| `bevelDepth` | number   | `0.08`      | Additional refraction applied on the very edge to simulate depth.                                           |
-| `bevelWidth` | number   | `0.15`      | Width of the bevel zone, expressed as a fraction of the shortest side.                                      |
-| `frost`      | number   | `0`         | Size of the blur kernel in **pixels** for a frosted glass look.                                             |
-| `shadow`     | boolean  | `true`      | Toggles a subtle drop-shadow under the pane.                                                                |
-| `specular`   | boolean  | `true`      | Enables animated specular highlights that move with time.                                                   |
-| `tilt`       | boolean  | `false`     | Adds a 3-D tilt interaction on cursor/touch movement (rotates the pane).                                    |
-| `tiltFactor` | number   | `5`         | Depth of the tilt in degrees (0-25 recommended). Higher = steeper tilt.                                     |
-| `reveal`     | string   | `'fade'`    | - `None` - immediately render the `target` element.<br>- `Fade` - a smooth fade in of the `target` element. |
-| `on.init`    | function | `—`         | Runs once the first full render completes. Receives the instance.                                           |
+| Option       | Type     | Default     | Description                                                                                                   |
+| ------------ | -------- | ----------- | ------------------------------------------------------------------------------------------------------------- |
+| `snapshot`   | string   | `'body'`    | CSS selector for the element to snapshot. Defaults to `<body>`.                                               |
+| `target`     | string   | `.selector` | CSS selector of the element(s) that should be glassified, all elements with this selector will be glassified. |
+| `refraction` | number   | `0.01`      | Base refraction offset applied across the pane.                                                               |
+| `bevelDepth` | number   | `0.08`      | Additional refraction applied on the very edge to simulate depth.                                             |
+| `bevelWidth` | number   | `0.15`      | Width of the bevel zone, expressed as a fraction of the shortest side.                                        |
+| `frost`      | number   | `0`         | Size of the blur kernel in **pixels** for a frosted glass look.                                               |
+| `shadow`     | boolean  | `true`      | Toggles a subtle drop-shadow under the pane.                                                                  |
+| `specular`   | boolean  | `true`      | Enables animated specular highlights that move with time.                                                     |
+| `tilt`       | boolean  | `false`     | Adds a 3-D tilt interaction on cursor/touch movement (rotates the pane).                                      |
+| `tiltFactor` | number   | `5`         | Depth of the tilt in degrees (0-25 recommended). Higher = steeper tilt.                                       |
+| `reveal`     | string   | `'fade'`    | - `None` - immediately render the `target` element.<br>- `Fade` - a smooth fade in of the `target` element.   |
+| `on.init`    | function | `—`         | Runs once the first full render completes. Receives the instance.                                             |
 
 > The `target` parameter is required, all other parameters are optional.
 
