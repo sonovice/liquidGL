@@ -64,6 +64,7 @@
         position: fixed;
         inset: 0;
         pointer-events: none;
+        mix-blend-mode: difference;
       }
 
       .menu-anchor a {
@@ -107,7 +108,6 @@
       .menu-items-wrap,
       .menu-item-text {
         z-index: 3;
-        mix-blend-mode: difference;
       }
 
       .menu-items-wrap {
@@ -185,7 +185,6 @@
         color: #b7b7b7;
         letter-spacing: 0.02rem;
         font-weight: 500;
-        mix-blend-mode: difference;
       }
 
       .ripples {
@@ -282,7 +281,7 @@
 
     <!-- Scripts -->
     <script src="/scripts/html2canvas.js"></script>
-    <script src="/scripts/liquidGL.js"></script>
+    <script src="/scripts/liquidGL-multi.js"></script>
     <script>
       let glassEffect; // Declare in a higher scope to be accessible across event listeners
 
