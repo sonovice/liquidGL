@@ -734,7 +734,7 @@
    * ------------------------------------------------*/
   window.LiquidGL = function (userOptions = {}) {
     const defaults = {
-      target: ".menu-wrap",
+      target: ".selector",
       snapshot: "body",
       refraction: 0.01,
       bevelDepth: 0.08,

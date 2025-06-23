@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Demo 4 – Multiple Lenses (LiquidGL-multi)</title>
+    <link rel="icon" href="/assets/favicon.ico" />
+    <style>
+      :root {
+        --text-color: #333;
+        --bg-color: #f0f0f0;
+        --secondary-text: rgba(0, 0, 0, 0.55);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* --- Background image stack (borrowed from demo-1) --- */
+      .main-content {
+        position: relative;
+        z-index: 1;
+      }
+      .image-container {
+        height: 100svh;
+        overflow: clip;
+      }
+      .image-container img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        will-change: transform;
+      }
+
+      /* --- Pricing cards --- */
+      .pricing-anchor {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        pointer-events: none; /* let children decide */
+      }
+      .cards-wrapper {
+        display: flex;
+        gap: 2rem;
+        flex-wrap: wrap;
+        justify-content: center;
+        pointer-events: auto; /* allow interaction */
+      }
+      .pricing-card {
+        width: 280px;
+        padding: 2rem 2.25rem 2.5rem;
+        border-radius: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        position: relative;
+        overflow: clip;
+        /* Leave background transparent – WebGL lens will fill */
+        background: transparent;
+      }
+      /* Fallback styles when WebGL is unavailable – add .no-webgl to <html> */
+      html.no-webgl .pricing-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(30px) saturate(180%);
+      }
+      .plan-name {
+        font-size: 1.25rem;
+        font-weight: 700;
+        text-align: center;
+      }
+      .price {
+        font-size: 2.25rem;
+        font-weight: 800;
+        text-align: center;
+        line-height: 1.1;
+      }
+      .price span {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--secondary-text);
+      }
+      .feature-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        color: var(--secondary-text);
+      }
+      .cta-button {
+        margin-top: 0.5rem;
+        padding: 0.75rem 1rem;
+        border: none;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #fff;
+        background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+        cursor: pointer;
+        transition: opacity 0.2s ease;
+      }
+      .cta-button:hover {
+        opacity: 0.9;
+      }
+
+      /* Ensure foreground text renders above the WebGL canvas */
+      .pricing-card * {
+        position: relative;
+        z-index: 3;
+        mix-blend-mode: difference; /* stylish white-on-dark backgrounds */
+      }
+
+      @media (max-width: 768px) {
+        .pricing-card {
+          width: 85vw;
+          border-radius: 5vw;
+        }
+        .cards-wrapper {
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+      }
+    </style>
+    <!-- Dependencies -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+  </head>
+  <body>
+    <div class="main-content">
+      <div class="image-container">
+        <img src="/assets/liquid-bkg-_0000_Comp-33.webp" alt="Background" />
+      </div>
+      <div class="image-container">
+        <img src="/assets/liquid-bkg-_0001_Comp-183.webp" alt="Background" />
+      </div>
+      <div class="image-container">
+        <img src="/assets/liquid-bkg-_0002_Comp-163.webp" alt="Background" />
+      </div>
+      <div class="image-container">
+        <img src="/assets/liquid-bkg-_0003_Comp-151.webp" alt="Background" />
+      </div>
+      <div class="image-container">
+        <img src="/assets/liquid-bkg-_0004_Comp-13.webp" alt="Background" />
+      </div>
+    </div>
+
+    <!-- Pricing cards overlay -->
+    <div class="pricing-anchor">
+      <div class="cards-wrapper">
+        <!-- Basic Plan -->
+        <div class="pricing-card menu-wrap">
+          <h3 class="plan-name">Starter</h3>
+          <p class="price">$9<span>/mo</span></p>
+          <ul class="feature-list">
+            <li>✔ 5 Projects</li>
+            <li>✔ 10GB Storage</li>
+            <li>✔ Community Support</li>
+          </ul>
+          <button class="cta-button">Choose</button>
+        </div>
+
+        <!-- Pro Plan -->
+        <div class="pricing-card menu-wrap">
+          <h3 class="plan-name">Pro</h3>
+          <p class="price">$29<span>/mo</span></p>
+          <ul class="feature-list">
+            <li>✔ 25 Projects</li>
+            <li>✔ 100GB Storage</li>
+            <li>✔ Priority Support</li>
+          </ul>
+          <button class="cta-button">Choose</button>
+        </div>
+
+        <!-- Enterprise Plan -->
+        <div class="pricing-card menu-wrap">
+          <h3 class="plan-name">Enterprise</h3>
+          <p class="price">$99<span>/mo</span></p>
+          <ul class="feature-list">
+            <li>✔ Unlimited Projects</li>
+            <li>✔ 1TB Storage</li>
+            <li>✔ Dedicated Support</li>
+          </ul>
+          <button class="cta-button">Contact Us</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/scripts/html2canvas.js"></script>
+    <script src="/scripts/liquidGL-multi.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        window.glassEffect = LiquidGL({
+          target: ".menu-wrap",
+          refraction: 0.015,
+          bevelDepth: 0.08,
+          bevelWidth: 0.18,
+          frost: 2,
+          shadow: true,
+          specular: true,
+          reveal: "fade",
+        });
+      });
+      window.addEventListener("load", function () {
+        // Lenis & GSAP ScrollTrigger integration
+        const lenis = new Lenis();
+
+        lenis.on("scroll", ScrollTrigger.update);
+
+        gsap.ticker.add((time) => {
+          lenis.raf(time * 1000);
+          if (window.glassEffect) {
+            // For multi-instance build, glassEffect may be an array; call renderer directly.
+            if (Array.isArray(window.glassEffect)) {
+              if (window.__LiquidGLRenderer__)
+                window.__LiquidGLRenderer__.render();
+            } else if (!window.glassEffect.options.specular) {
+              window.glassEffect.render();
+            }
+          }
+        });
+
+        gsap.ticker.lagSmoothing(0);
+      });
+    </script>
+  </body>
+</html>
