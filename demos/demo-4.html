@@ -44,8 +44,8 @@
         will-change: transform;
       }
 
-      /* --- Pricing cards --- */
-      .pricing-anchor {
+      /* --- marquee cards --- */
+      .marquee-anchor {
         position: fixed;
         inset: 0;
         display: flex;
@@ -62,7 +62,7 @@
         justify-content: center;
         pointer-events: auto; /* allow interaction */
       }
-      .pricing-card {
+      .marquee-card {
         width: 300px;
         padding: 0;
         border-radius: 1rem;
@@ -155,7 +155,7 @@
       }
 
       @media (max-width: 768px) {
-        .pricing-card {
+        .marquee-card {
           width: 85vw;
           border-radius: 5vw;
         }
@@ -191,11 +191,11 @@
       </div>
     </div>
 
-    <!-- Pricing cards overlay -->
-    <div class="pricing-anchor">
+    <!-- marquee cards overlay -->
+    <div class="marquee-anchor">
       <div class="cards-wrapper">
         <!-- Basic Plan -->
-        <div class="pricing-card">
+        <div class="marquee-card">
           <div class="marquee">
             <div class="marquee-content">
               <span>Glassify the web with liquidGL by NaughtyDuk©</span>
@@ -205,7 +205,7 @@
         </div>
 
         <!-- Pro Plan -->
-        <div class="pricing-card">
+        <div class="marquee-card">
           <div class="marquee">
             <div class="marquee-content">
               <span>Glassify the web with liquidGL by NaughtyDuk©</span>
@@ -215,7 +215,7 @@
         </div>
 
         <!-- Enterprise Plan -->
-        <div class="pricing-card">
+        <div class="marquee-card">
           <div class="marquee">
             <div class="marquee-content">
               <span>Glassify the web with liquidGL by NaughtyDuk©</span>
@@ -232,7 +232,7 @@
     <script>
       document.addEventListener("DOMContentLoaded", () => {
         window.glassEffect = LiquidGL({
-          target: ".pricing-card",
+          target: ".marquee-card",
           refraction: 0.015,
           bevelDepth: 0.08,
           bevelWidth: 0.18,
@@ -240,7 +240,7 @@
           shadow: true,
           specular: true,
           tilt: true,
-          tiltFactor: 5,
+          tiltFactor: 15,
           reveal: "fade",
         });
 

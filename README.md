@@ -176,7 +176,7 @@ Below are some ready-made configurations you can copy-paste. Feel free to tweak 
 
 **Content Visibility**
 
-> It is recommended to use `z-index: 3;` on the content inside your target element to make it sit on top of the lens. You can also combine this with `mix-blend-mode: difference;` for better legibility.
+> It is recommended to use `z-index: 3;` on the content inside your target element to make it sit on top of the lens. You can also combine this with `mix-blend-mode: difference;` on the `fixed-container` for better legibility.
 
 **Border-radius**
 

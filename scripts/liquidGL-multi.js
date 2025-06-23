@@ -62,6 +62,7 @@
 
       const ctxAttribs = { alpha: true, premultipliedAlpha: true };
       this.gl =
+        this.canvas.getContext("webgl2", ctxAttribs) ||
         this.canvas.getContext("webgl", ctxAttribs) ||
         this.canvas.getContext("experimental-webgl", ctxAttribs);
       if (!this.gl) throw new Error("LiquidGL: WebGL unavailable");
@@ -840,6 +841,7 @@
     if (typeof window.__LiquidGLNoWebGL__ === "undefined") {
       const testCanvas = document.createElement("canvas");
       const testCtx =
+        testCanvas.getContext("webgl2") ||
         testCanvas.getContext("webgl") ||
         testCanvas.getContext("experimental-webgl");
       window.__LiquidGLNoWebGL__ = !testCtx;
