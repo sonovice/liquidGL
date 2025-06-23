@@ -1,505 +1,260 @@
 /*
- * LiquidGL – Ultra-light glassmorphism for the web
+ * liquidGL – Ultra-light glassmorphism for the web
  * -----------------------------------------------------------------------------
- * Requirements:   WebGL + html2canvas
- * Author:         NaughtyDuk© - https://liquid.naughtyduk.com
- * Version:        1.0.0
- * Date:           2025-06-20
- * License:        MIT
  *
+ * Author: NaughtyDuk© – https://liquidgl.naughtyduk.com
+ * Licence: MIT
  */
 
 (() => {
   "use strict";
 
   /* --------------------------------------------------
-   *  Utility – debounce a function
+   *  Utilities
    * ------------------------------------------------*/
-  function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-      const context = this;
-      const later = () => {
-        timeout = null;
-        func.apply(context, args);
-      };
-      clearTimeout(timeout);
-      timeout = setTimeout(later, wait);
+  function debounce(fn, wait) {
+    let t;
+    return (...a) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn.apply(null, a), wait);
     };
   }
 
   /* --------------------------------------------------
    *  WebGL helpers
    * ------------------------------------------------*/
-  function compileShader(gl, type, source) {
-    const shader = gl.createShader(type);
-    gl.shaderSource(shader, source.trim());
-    gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      console.error("Shader error", gl.getShaderInfoLog(shader));
-      gl.deleteShader(shader);
+  function compileShader(gl, type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src.trim());
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+      console.error("Shader error", gl.getShaderInfoLog(s));
+      gl.deleteShader(s);
       return null;
     }
-    return shader;
+    return s;
   }
 
   function createProgram(gl, vsSource, fsSource) {
     const vs = compileShader(gl, gl.VERTEX_SHADER, vsSource);
     const fs = compileShader(gl, gl.FRAGMENT_SHADER, fsSource);
     if (!vs || !fs) return null;
-    const prog = gl.createProgram();
-    gl.attachShader(prog, vs);
-    gl.attachShader(prog, fs);
-    gl.linkProgram(prog);
-    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-      console.error("Program link error", gl.getProgramInfoLog(prog));
+    const p = gl.createProgram();
+    gl.attachShader(p, vs);
+    gl.attachShader(p, fs);
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+      console.error("Program link error", gl.getProgramInfoLog(p));
       return null;
     }
-    return prog;
+    return p;
   }
 
   /* --------------------------------------------------
-   *  Main class
+   *  Shared renderer (one per page)
    * ------------------------------------------------*/
-  class LiquidGL {
-    constructor(container, options) {
-      this.el = container;
-      this.options = options;
-      this.originalShadow = this.el.style.boxShadow;
-      this.originalOpacity = this.el.style.opacity;
-      this.originalTransition = this.el.style.transition;
-      this.el.style.transition = "none";
-      this.el.style.opacity = 0;
+  class LiquidGLRenderer {
+    constructor(snapshotSelector) {
+      // Canvas that hosts the single WebGL context
       this.canvas = document.createElement("canvas");
-      this.canvas.style.cssText = `position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;border-radius:inherit;z-index:2;`;
-      this.el.style.position =
-        this.el.style.position === "static"
-          ? "relative"
-          : this.el.style.position;
-      this.el.appendChild(this.canvas);
-      this.snapshotTarget = document.querySelector(this.options.snapshot);
-      if (!this.snapshotTarget) {
-        console.warn(
-          `LiquidGL: Snapshot element "${this.options.snapshot}" not found. Falling back to <body>.`
-        );
-        this.snapshotTarget = document.body;
-      }
+      this.canvas.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:2;`;
+      document.body.appendChild(this.canvas);
 
       const ctxAttribs = { alpha: true, premultipliedAlpha: true };
       this.gl =
+        this.canvas.getContext("webgl2", ctxAttribs) ||
         this.canvas.getContext("webgl", ctxAttribs) ||
         this.canvas.getContext("experimental-webgl", ctxAttribs);
-      if (!this.gl) {
-        console.warn("WebGL unavailable");
-        this.canvas.remove();
-        return;
-      }
+      if (!this.gl) throw new Error("LiquidGL: WebGL unavailable");
 
-      const bgCol = window.getComputedStyle(this.el).backgroundColor;
-      const rgbaMatch = bgCol.match(/rgba?\(([^)]+)\)/);
-      this._bgColorComponents = null;
-      if (rgbaMatch) {
-        const comps = rgbaMatch[1].split(/[ ,]+/).map(parseFloat);
-        const [r, g, b, a = 1] = comps;
-        this._bgColorComponents = { r, g, b, a };
-        this.el.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0)`;
-      }
-
+      this.lenses = [];
       this.texture = null;
-      this.program = null;
-      this.posBuf = null;
-      this.uTex = null;
-      this.uRes = null;
-      this.uBounds = null;
-      this.uRefraction = null;
-      this.uBevelDepth = null;
-      this.uBevelWidth = null;
-      this.uFrost = null;
-      this.uRadius = null;
-      this.uTime = null;
-      this.uSpecular = null;
-      this.uRevealProgress = null;
-      this.uRevealType = null;
       this.textureWidth = 0;
       this.textureHeight = 0;
-      this.uvScale = [0, 0];
-      this.radius = 0;
-      this.initialX = 0;
-      this.initialY = 0;
+      this.scaleFactor = 1;
       this.startTime = Date.now();
-      this.renderLoopRunning = false;
-      this.scrollOffset = 0;
-      this._tiltHandlersBound = false;
-      this._isPointerInside = false;
+
+      this._initGL();
+
+      this.snapshotTarget =
+        document.querySelector(snapshotSelector) || document.body;
+      if (!this.snapshotTarget) this.snapshotTarget = document.body;
+
+      // Handle resize – debounce for performance
+      const onResize = debounce(() => {
+        this._resizeCanvas();
+        this.lenses.forEach((l) => l.updateMetrics());
+        this.captureSnapshot();
+      }, 250);
+      window.addEventListener("resize", onResize, { passive: true });
 
       if ("ResizeObserver" in window) {
-        this.resizeObserver = new ResizeObserver(() => this.resize());
-        this.resizeObserver.observe(this.el);
-
-        const debouncedRecapture = debounce(() => this.captureFullPage(), 250);
-        const snapshotResizeObserver = new ResizeObserver(debouncedRecapture);
-        snapshotResizeObserver.observe(this.snapshotTarget);
-      } else {
-        const debouncedResize = debounce(() => {
-          this.resize();
-          this.captureFullPage();
-        }, 250);
-        window.addEventListener("resize", debouncedResize, { passive: true });
+        new ResizeObserver(onResize).observe(this.snapshotTarget);
       }
 
-      this.captureBusy = false;
+      this._resizeCanvas();
+      this.captureSnapshot();
 
-      this.initGL();
-      this.resize();
+      this._pendingReveal = [];
 
-      if (typeof window.html2canvas === "undefined") {
-        console.error(
-          "LiquidGL: html2canvas.js is required. Please include it manually."
-        );
-        return;
-      }
-
-      const fullH = this.snapshotTarget.scrollHeight;
-      const fullW = this.snapshotTarget.scrollWidth;
-      const maxTex = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) || 8192;
-      let scale = Math.min(1, maxTex / fullW, maxTex / fullH);
-      if (scale > 0.5) scale = 0.5;
-      this.scaleFactor = scale;
-
-      const startCapture = () => {
-        const firstCapture = this.captureFullPage();
-        this.initPromise = firstCapture.then(() => {
-          if (
-            this.options &&
-            this.options.on &&
-            typeof this.options.on.init === "function"
-          ) {
-            this.options.on.init.call(this, this);
-          }
-          this._reveal();
-
-          if (this.options.specular) {
-            this._startContinuousRender();
-          }
-        });
-      };
-
-      if (document.readyState === "complete") {
-        startCapture();
-      } else {
-        window.addEventListener("load", startCapture, { once: true });
-      }
-
-      this.setShadow(this.options.shadow);
-
-      if (this.options.tilt) {
-        this._bindTiltHandlers();
-      }
-    }
-
-    setShadow(enabled) {
-      if (enabled) {
-        this.el.style.boxShadow =
-          "0 10px 30px rgba(0, 0, 0, 0.1), 0 0 0 0.5px rgba(0, 0, 0, 0.05)";
-      } else {
-        this.el.style.boxShadow = this.originalShadow;
-      }
-    }
-
-    _startContinuousRender() {
-      if (this.renderLoopRunning) return;
-      this.renderLoopRunning = true;
-      const loop = () => {
-        if (!document.body.contains(this.el)) {
-          this.renderLoopRunning = false;
-          return;
-        }
-        this.render();
-        requestAnimationFrame(loop);
-      };
-      requestAnimationFrame(loop);
-    }
-
-    _reveal() {
-      const revealType = this.options.reveal ?? "fade";
-      const revealTypes = { none: 0, fade: 1 };
-      const revealTypeIndex = revealTypes[revealType];
-
-      requestAnimationFrame(() => {
-        if (revealType === "fade") {
-          const duration = 1000;
-          const startTime = Date.now();
-
-          this.gl.useProgram(this.program);
-          this.gl.uniform1i(this.uRevealType, revealTypeIndex);
-
-          const animate = () => {
-            const progress = Math.min(1, (Date.now() - startTime) / duration);
-            this.gl.uniform1f(this.uRevealProgress, progress);
-            this.el.style.opacity = (this.originalOpacity || 1) * progress;
-
-            if (this._bgColorComponents) {
-              const { r, g, b, a } = this._bgColorComponents;
-              this.el.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${
-                a * progress
-              })`;
-            }
-            this.render();
-
-            if (progress < 1) {
-              requestAnimationFrame(animate);
-            } else {
-              this.el.style.transition = this.originalTransition || "";
-              this.el.style.opacity = this.originalOpacity || 1;
-              if (this._bgColorComponents) {
-                const { r, g, b, a } = this._bgColorComponents;
-                this.el.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
-              }
-              if (!this.renderLoopRunning) this.render();
-            }
-          };
-
-          this.gl.uniform1f(this.uRevealProgress, 0);
-          this.render();
-
-          requestAnimationFrame(() => {
-            animate();
-          });
-        } else {
-          this.render();
-          this.el.style.transition =
-            this.originalTransition || "opacity 250ms ease";
-          requestAnimationFrame(() => {
-            this.el.style.opacity = this.originalOpacity || 1;
-          });
-        }
-      });
+      this.canvas.style.opacity = "0";
     }
 
     /* ----------------------------- */
-    initGL() {
+    _initGL() {
       const vsSource = `
-                attribute vec2 a_position;
-                varying vec2 v_uv;
-                void main(){
-                  v_uv = (a_position + 1.0) * 0.5;
-                  gl_Position = vec4(a_position, 0.0, 1.0);
-                }
-              `;
+        attribute vec2 a_position;
+        varying vec2 v_uv;
+        void main(){
+          v_uv = (a_position + 1.0) * 0.5;
+          gl_Position = vec4(a_position, 0.0, 1.0);
+        }`;
 
       const fsSource = `
-                precision mediump float;
-                varying vec2 v_uv;
-                uniform sampler2D u_tex;
-                uniform vec2 u_resolution;
-                uniform vec4 u_bounds; // xy = origin, zw = scale in UV
-                uniform float u_refraction;
-                uniform float u_bevelDepth;
-                uniform float u_bevelWidth;
-                uniform float u_frost;
-                uniform float u_radius;
-                uniform float u_time;
-                uniform bool u_specular;
-                uniform float u_revealProgress;
-                uniform int u_revealType;
-        
-                float udRoundBox( vec2 p, vec2 b, float r )
-                {
-                  return length(max(abs(p)-b+r,0.0))-r;
-                }
-                
-                // distance to nearest edge (0 at edge, 0.5 in centre)
-                float edgeFactor(vec2 uv, float radius_px){
-                  vec2 p_px = (uv - 0.5) * u_resolution;
-                  vec2 b_px = 0.5 * u_resolution;
-                  
-                  float d = -udRoundBox(p_px, b_px, radius_px);
-                  
-                  // Convert bevelWidth to pixels
-                  float bevel_px = u_bevelWidth * min(u_resolution.x, u_resolution.y);
-                  
-                  return 1.0 - smoothstep(0.0, bevel_px, d);
-                }
-        
-                void main(){
-                  // Make displacement isotropic regardless of element aspect.
-                  vec2 delta = v_uv - 0.5;
-                  delta.x *= u_resolution.x / u_resolution.y;
-                  vec2 dir = normalize(delta);
-      
-                  // Add a safe-guard against normalize(0,0) which is undefined and can
-                  // cause a white pixel artifact on some GPUs.
-                  if (length(delta) == 0.0) {
-                    dir = vec2(0.0, 0.0);
-                  }
+        precision mediump float;
+        varying vec2 v_uv;
+        uniform sampler2D u_tex;
+        uniform vec2  u_resolution;
+        uniform vec4  u_bounds;    // xy = origin, zw = scale in UV
+        uniform float u_refraction;
+        uniform float u_bevelDepth;
+        uniform float u_bevelWidth;
+        uniform float u_frost;
+        uniform float u_radius;
+        uniform float u_time;
+        uniform bool  u_specular;
+        uniform float u_revealProgress;
+        uniform int   u_revealType;
 
-                  float edge = edgeFactor(v_uv, u_radius);
-      
-                  // A gentle, overall refraction for the main lens effect.
-                  float refraction_strength = edge * u_refraction;
-                  // A second, stronger refraction at the very edge to simulate a bevel.
-                  float bevel_strength = pow(edge, 10.0) * u_bevelDepth;
-                  vec2 offset = dir * (refraction_strength + bevel_strength);
-      
-                  // Map local v_uv to global texture UV. We flip the v_uv.y component
-                  // (1.0 - v_uv.y) because WebGL's quad coordinates start from the
-                  // bottom-left, while our texture is oriented from the top-left. This
-                  // aligns them correctly.
-                  vec2 flipped_v_uv = vec2(v_uv.x, 1.0 - v_uv.y);
-                  vec2 mapped = u_bounds.xy + flipped_v_uv * u_bounds.zw;
-                  vec2 refracted_uv = mapped + offset;
-      
-                  // This is the robust fix for all edge artifacts. Instead of clamping, we
-                  // smoothly mix back to the un-refracted UV if we are about to sample
-                  // outside the texture. This prevents all visual glitches at the boundary.
-                  float oob_x = max(0.0, -refracted_uv.x) + max(0.0, refracted_uv.x - 1.0);
-                  float oob_y = max(0.0, -refracted_uv.y) + max(0.0, refracted_uv.y - 1.0);
-                  float oob_blend = 1.0 - smoothstep(0.0, 0.01, max(oob_x, oob_y));
-                  vec2 sampleUV = mix(mapped, refracted_uv, oob_blend);
-                  
-                  vec4 finalColor;
-  
-                  if (u_frost > 0.0) {
-                      float frost_amount = u_frost / u_resolution.x;
-                      vec4 blurred = vec4(0.0);
-                      blurred += texture2D(u_tex, sampleUV + vec2(-1.0, -1.0) * frost_amount);
-                      blurred += texture2D(u_tex, sampleUV + vec2(0.0, -1.0) * frost_amount);
-                      blurred += texture2D(u_tex, sampleUV + vec2(1.0, -1.0) * frost_amount);
-                      blurred += texture2D(u_tex, sampleUV + vec2(-1.0, 0.0) * frost_amount);
-                      blurred += texture2D(u_tex, sampleUV + vec2(0.0, 0.0) * frost_amount);
-                      blurred += texture2D(u_tex, sampleUV + vec2(1.0, 0.0) * frost_amount);
-                      blurred += texture2D(u_tex, sampleUV + vec2(-1.0, 1.0) * frost_amount);
-                      blurred += texture2D(u_tex, sampleUV + vec2(0.0, 1.0) * frost_amount);
-                      blurred += texture2D(u_tex, sampleUV + vec2(1.0, 1.0) * frost_amount);
-                      finalColor = blurred / 9.0;
-                  } else {
-                      finalColor = texture2D(u_tex, sampleUV);
-                  }
-      
-                  if (u_specular) {
-                      // Two moving light sources for broad highlights
-                      vec2 light_pos1 = vec2(sin(u_time * 0.2), cos(u_time * 0.3)) * 0.6 + 0.5;
-                      vec2 light_pos2 = vec2(sin(u_time * -0.4 + 1.5), cos(u_time * 0.25 - 0.5)) * 0.6 + 0.5;
-  
-                      float d1 = distance(v_uv, light_pos1);
-                      float d2 = distance(v_uv, light_pos2);
-  
-                      // Create soft, broad highlights from the light sources
-                      float highlight = 0.0;
-                      highlight += smoothstep(0.4, 0.0, d1) * 0.1; // Intensity 0.1
-                      highlight += smoothstep(0.5, 0.0, d2) * 0.08; // Intensity 0.08
-  
-                      // A subtle, shimmering layer across the surface
-                      float shimmer_noise = (sin(v_uv.x * 20.0 + u_time * 1.5) + cos(v_uv.y * 15.0 + u_time * 1.0));
-                      float shimmer = pow(fract(shimmer_noise * 5.3983), 20.0);
-                      highlight += shimmer * 0.03; // Very subtle shimmer
-  
-                      finalColor.rgb += highlight;
-                  }
-      
-                  // Keep whatever alpha html2canvas captured – if the pixel is transparent
-                  // we want the underlying page colour to show through instead of forcing
-                  // an opaque black.
-                  if (u_revealType == 1) { // 1 = fade
-                      // Premultiply RGB by the same factor when premultipliedAlpha
-                      // is enabled. Without this, the very first low-alpha frame
-                      // can appear bright (causing a white flash) because RGB is
-                      // left at full intensity.
-                      finalColor.rgb *= u_revealProgress;
-                      finalColor.a  *= u_revealProgress;
-                  }
-                  gl_FragColor = finalColor;
-                }
-              `;
+        float udRoundBox( vec2 p, vec2 b, float r ) {
+          return length(max(abs(p)-b+r,0.0))-r;
+        }
+        float edgeFactor(vec2 uv, float radius_px){
+          vec2 p_px = (uv - 0.5) * u_resolution;
+          vec2 b_px = 0.5 * u_resolution;
+          float d = -udRoundBox(p_px, b_px, radius_px);
+          float bevel_px = u_bevelWidth * min(u_resolution.x, u_resolution.y);
+          return 1.0 - smoothstep(0.0, bevel_px, d);
+        }
+        void main(){
+          vec2 delta = v_uv - 0.5;
+          delta.x *= u_resolution.x / u_resolution.y;
+          vec2 dir = normalize(delta);
+          if (length(delta) == 0.0) dir = vec2(0.0);
 
+          float edge = edgeFactor(v_uv, u_radius);
+          float offsetAmt = edge * u_refraction + pow(edge, 10.0) * u_bevelDepth;
+          float centreBlend = smoothstep(0.15, 0.45, length(delta));
+          vec2 offset = dir * offsetAmt * centreBlend;
+
+          vec2 flippedUV = vec2(v_uv.x, 1.0 - v_uv.y);
+          vec2 mapped = u_bounds.xy + flippedUV * u_bounds.zw;
+          vec2 refracted = mapped + offset;
+
+          float oob = max(max(-refracted.x, refracted.x - 1.0), max(-refracted.y, refracted.y - 1.0));
+          float blend = 1.0 - smoothstep(0.0, 0.01, oob);
+          vec2 sampleUV = mix(mapped, refracted, blend);
+
+          vec4 baseCol   = texture2D(u_tex, mapped);      // no refraction
+          vec4 refrCol   = texture2D(u_tex, sampleUV);    // with refraction
+
+          // How different are they?  0 = identical, 1 = extreme difference
+          float diff = clamp(length(refrCol.rgb - baseCol.rgb) * 4.0, 0.0, 1.0);
+
+          // Blend factor grows only when colours diverge AND we're near the centre
+          //    ( we gate it with the same centreBlend already used for offset )
+          float antiHalo = (1.0 - centreBlend) * diff;    // 0–15 % radius = 0, fades in by 45 %
+
+          vec4 final    = mix(refrCol, baseCol, antiHalo);
+
+          // Mask pixels outside rounded rect when using global canvas
+          vec2 p_px = (v_uv - 0.5) * u_resolution;
+          vec2 b_px = 0.5 * u_resolution;
+          float dmask = udRoundBox(p_px, b_px, u_radius);
+          float inShape = 1.0 - step(0.0, dmask); // 1 inside, 0 outside
+
+          if (u_specular) {
+            vec2 lp1 = vec2(sin(u_time*0.2), cos(u_time*0.3))*0.6 + 0.5;
+            vec2 lp2 = vec2(sin(u_time*-0.4+1.5), cos(u_time*0.25-0.5))*0.6 + 0.5;
+            float h = 0.0;
+            h += smoothstep(0.4,0.0,distance(v_uv, lp1))*0.1;
+            h += smoothstep(0.5,0.0,distance(v_uv, lp2))*0.08;
+            final.rgb += h;
+          }
+
+          // Apply reveal fade if requested (same logic as single-lens build)
+          if (u_revealType == 1) { // fade
+              final.rgb *= u_revealProgress;
+              final.a  *= u_revealProgress;
+          }
+
+          // Apply rounded-rect mask
+          final.rgb *= inShape;
+          final.a   *= inShape;
+
+          gl_FragColor = final;
+        }`;
+
+      this.program = createProgram(this.gl, vsSource, fsSource);
       const gl = this.gl;
-      this.program = createProgram(gl, vsSource, fsSource);
-      if (!this.program) return;
+      if (!this.program) throw new Error("LiquidGL: Shader failed");
 
-      this.uTex = gl.getUniformLocation(this.program, "u_tex");
-      this.uRes = gl.getUniformLocation(this.program, "u_resolution");
-      this.uBounds = gl.getUniformLocation(this.program, "u_bounds");
-      this.uRefraction = gl.getUniformLocation(this.program, "u_refraction");
-      this.uBevelDepth = gl.getUniformLocation(this.program, "u_bevelDepth");
-      this.uBevelWidth = gl.getUniformLocation(this.program, "u_bevelWidth");
-      this.uFrost = gl.getUniformLocation(this.program, "u_frost");
-      this.uRadius = gl.getUniformLocation(this.program, "u_radius");
-      this.uTime = gl.getUniformLocation(this.program, "u_time");
-      this.uSpecular = gl.getUniformLocation(this.program, "u_specular");
-      this.uRevealProgress = gl.getUniformLocation(
-        this.program,
-        "u_revealProgress"
-      );
-      this.uRevealType = gl.getUniformLocation(this.program, "u_revealType");
-
-      const posLoc = gl.getAttribLocation(this.program, "a_position");
-      this.posBuf = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuf);
+      const posBuf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
       gl.bufferData(
         gl.ARRAY_BUFFER,
         new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
         gl.STATIC_DRAW
       );
+
+      const posLoc = gl.getAttribLocation(this.program, "a_position");
       gl.enableVertexAttribArray(posLoc);
       gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+      // Cache uniform locations
+      this.u = {
+        tex: gl.getUniformLocation(this.program, "u_tex"),
+        res: gl.getUniformLocation(this.program, "u_resolution"),
+        bounds: gl.getUniformLocation(this.program, "u_bounds"),
+        refraction: gl.getUniformLocation(this.program, "u_refraction"),
+        bevelDepth: gl.getUniformLocation(this.program, "u_bevelDepth"),
+        bevelWidth: gl.getUniformLocation(this.program, "u_bevelWidth"),
+        frost: gl.getUniformLocation(this.program, "u_frost"),
+        radius: gl.getUniformLocation(this.program, "u_radius"),
+        time: gl.getUniformLocation(this.program, "u_time"),
+        specular: gl.getUniformLocation(this.program, "u_specular"),
+        revealProgress: gl.getUniformLocation(this.program, "u_revealProgress"),
+        revealType: gl.getUniformLocation(this.program, "u_revealType"),
+      };
     }
 
     /* ----------------------------- */
-    resize() {
-      const rect = this.el.getBoundingClientRect();
-
+    _resizeCanvas() {
       const dpr = Math.min(1, window.devicePixelRatio || 1);
-      this.canvas.width = rect.width * dpr;
-      this.canvas.height = rect.height * dpr;
-      this.canvas.style.width = `${rect.width}px`;
-      this.canvas.style.height = `${rect.height}px`;
-
-      const style = window.getComputedStyle(this.el);
-      const borderRadius = parseFloat(style.borderRadius);
-      this.radius = borderRadius * dpr;
-
-      this.initialX = rect.left;
-      this.initialY = rect.top;
-
-      if (this.textureWidth && this.textureHeight) {
-        const wUV = (rect.width * this.scaleFactor) / this.textureWidth;
-        const hUV = (rect.height * this.scaleFactor) / this.textureHeight;
-        this.uvScale = [wUV, hUV];
-      }
-
+      this.canvas.width = innerWidth * dpr;
+      this.canvas.height = innerHeight * dpr;
+      this.canvas.style.width = `${innerWidth}px`;
+      this.canvas.style.height = `${innerHeight}px`;
       this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-      if (this.texture) this.render();
     }
 
     /* ----------------------------- */
-    async captureFullPage(attempt = 0) {
-      if (this.captureBusy) return;
-      this.captureBusy = true;
-
-      const rect = this.el.getBoundingClientRect();
-
-      const sw = this.snapshotTarget.scrollWidth;
-      const sh = this.snapshotTarget.scrollHeight;
-      if (sw === 0 || sh === 0) {
-        console.warn(
-          "LiquidGL: Skipping capture due to zero-size snapshot target"
-        );
-        this.captureBusy = false;
-        return;
-      }
-
-      this.canvas.style.visibility = "hidden";
+    async captureSnapshot() {
+      if (this._capturing || typeof html2canvas === "undefined") return;
+      this._capturing = true;
       const ignoreAttr = "data-liquid-ignore";
-      this.el.setAttribute(ignoreAttr, "");
 
-      let viewportCanvas;
+      // Hide renderer canvas and mark all lens elements to ignore
+      this.canvas.style.visibility = "hidden";
+      this.lenses.forEach((ln) => ln.el.setAttribute(ignoreAttr, ""));
+
       try {
-        const fullH2 = this.snapshotTarget.scrollHeight;
-        const fullW2 = this.snapshotTarget.scrollWidth;
-        const maxTex2 = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) || 8192;
-        let newScale = Math.min(1, maxTex2 / fullW2, maxTex2 / fullH2);
-        if (newScale > 0.5) newScale = 0.5;
-        this.scaleFactor = newScale;
+        const fullW = this.snapshotTarget.scrollWidth;
+        const fullH = this.snapshotTarget.scrollHeight;
+        const maxTex = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) || 8192;
+        let scale = Math.min(1, maxTex / fullW, maxTex / fullH);
+        if (scale > 0.5) scale = 0.5;
+        this.scaleFactor = scale;
 
         const isXOrigin = (src) => {
           try {
@@ -515,10 +270,11 @@
           useCORS: true,
           backgroundColor: null,
           removeContainer: true,
-          width: this.snapshotTarget.scrollWidth,
-          height: this.snapshotTarget.scrollHeight,
+          width: fullW,
+          height: fullH,
           scrollX: 0,
           scrollY: 0,
+          scale: scale,
           ignoreElements: (el) => {
             if (el.hasAttribute(ignoreAttr)) return true;
             if (el.tagName === "CANVAS") return true;
@@ -526,43 +282,20 @@
             return false;
           },
         };
-        if (Number.isFinite(this.scaleFactor)) h2cOpts.scale = this.scaleFactor;
-
-        viewportCanvas = await html2canvas(this.snapshotTarget, h2cOpts);
+        const snapCanvas = await html2canvas(this.snapshotTarget, h2cOpts);
+        this._uploadTexture(snapCanvas);
       } catch (e) {
-        console.warn("html2canvas failed", e);
+        console.error("LiquidGL snapshot failed", e);
       } finally {
         this.canvas.style.visibility = "visible";
-        this.el.removeAttribute(ignoreAttr);
-        this.captureBusy = false;
+        this.lenses.forEach((ln) => ln.el.removeAttribute(ignoreAttr));
+        this._capturing = false;
       }
-
-      if (!viewportCanvas) {
-        console.warn(`LiquidGL: capture attempt ${attempt} returned null`);
-        this.el.style.opacity = this.originalOpacity || 1;
-        return;
-      }
-
-      this.updateTexture(viewportCanvas);
-
-      this.textureWidth = viewportCanvas.width;
-      this.textureHeight = viewportCanvas.height;
-      const wUV = (rect.width * this.scaleFactor) / this.textureWidth;
-      const hUV = (rect.height * this.scaleFactor) / this.textureHeight;
-      this.uvScale = [wUV, hUV];
-
-      this.initialX = rect.left;
-      this.initialY = rect.top;
     }
 
     /* ----------------------------- */
-    updateTexture(srcCanvas) {
-      if (!srcCanvas || srcCanvas.width === 0 || srcCanvas.height === 0) {
-        console.warn(
-          "LiquidGL: Skipping texture update due to zero-size canvas"
-        );
-        return;
-      }
+    _uploadTexture(srcCanvas) {
+      if (!srcCanvas) return;
       const gl = this.gl;
       if (!this.texture) this.texture = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, this.texture);
@@ -579,68 +312,345 @@
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+      this.textureWidth = srcCanvas.width;
+      this.textureHeight = srcCanvas.height;
+
       this.render();
+
+      // Fire delayed reveals once texture is ready
+      if (this._pendingReveal.length) {
+        this._pendingReveal.forEach((ln) => ln._reveal());
+        this._pendingReveal.length = 0;
+      }
+    }
+
+    /* ----------------------------- */
+    addLens(element, options) {
+      const lens = new LiquidGLLens(this, element, options);
+      this.lenses.push(lens);
+      // If texture not yet ready, postpone reveal until after first capture
+      if (!this.texture) {
+        this._pendingReveal.push(lens);
+      } else {
+        lens._reveal();
+      }
+      return lens;
     }
 
     /* ----------------------------- */
     render() {
-      if (this.canvas.width === 0 || this.canvas.height === 0) {
-        return;
-      }
-
       const gl = this.gl;
-      if (!this.program || !this.texture) return;
+      if (!this.texture) return;
+
+      // 1. Draw all lenses
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.useProgram(this.program);
-      gl.uniform1i(this.uTex, 0);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, this.texture);
-      gl.uniform2f(this.uRes, this.canvas.width, this.canvas.height);
+      gl.uniform1i(this.u.tex, 0);
 
-      if (this.uBounds && this.uvScale[0] > 0) {
-        const rect = this.el.getBoundingClientRect();
-        const snapshotRect = this.snapshotTarget.getBoundingClientRect();
+      const time = (Date.now() - this.startTime) / 1000;
+      gl.uniform1f(this.u.time, time);
 
-        const docX = rect.left - snapshotRect.left;
-        const docY = rect.top - snapshotRect.top + this.scrollOffset;
+      this.lenses.forEach((lens) => {
+        // Sync lens geometry with any runtime CSS morphing
+        lens.updateMetrics();
+        if (lens._mirrorActive && lens._mirrorClipUpdater) {
+          lens._mirrorClipUpdater();
+        }
+        this._renderLens(lens);
+      });
 
-        const leftUV = (docX * this.scaleFactor) / this.textureWidth;
-        const topUV = (docY * this.scaleFactor) / this.textureHeight;
-        gl.uniform4f(this.uBounds, leftUV, topUV, ...this.uvScale);
-      }
+      // 2. Copy shared canvas into any active mirrors
+      this.lenses.forEach((ln) => {
+        if (ln._mirrorActive && ln._mirrorCtx) {
+          const mirror = ln._mirror;
+          if (
+            mirror.width !== this.canvas.width ||
+            mirror.height !== this.canvas.height
+          ) {
+            mirror.width = this.canvas.width;
+            mirror.height = this.canvas.height;
+          }
+          ln._mirrorCtx.drawImage(this.canvas, 0, 0);
+        }
+      });
 
-      gl.uniform1f(this.uRefraction, this.options.refraction);
-      gl.uniform1f(this.uBevelDepth, this.options.bevelDepth);
-      gl.uniform1f(this.uBevelWidth, this.options.bevelWidth);
-      gl.uniform1f(this.uFrost, this.options.frost);
-
-      const styleNow = window.getComputedStyle(this.el);
-      const brRaw = styleNow.borderTopLeftRadius.split(" ")[0];
-      const isPercent = brRaw.trim().endsWith("%");
-      let brPx;
-      const rectNow = this.el.getBoundingClientRect();
-      if (isPercent) {
-        const pct = parseFloat(brRaw);
-        brPx = (Math.min(rectNow.width, rectNow.height) * pct) / 100;
-      } else {
-        brPx = parseFloat(brRaw);
-      }
-
-      const dprNow = Math.min(1, window.devicePixelRatio || 1);
-      const maxAllowed = Math.min(rectNow.width, rectNow.height) * dprNow * 0.5;
-      const newRadius = Math.min(brPx * dprNow, maxAllowed);
-      this.radius = newRadius;
-      gl.uniform1f(this.uRadius, this.radius);
-
-      const elapsedTime = (Date.now() - this.startTime) / 1000.0;
-      gl.uniform1f(this.uTime, elapsedTime);
-      gl.uniform1i(this.uSpecular, this.options.specular ? 1 : 0);
-
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      // 3. Clear areas of shared canvas for active mirrors (remove static copy)
+      const dpr = Math.min(1, window.devicePixelRatio || 1);
+      this.lenses.forEach((ln) => {
+        if (ln._mirrorActive && ln.rectPx) {
+          const { left, top, width, height } = ln.rectPx;
+          // Expand by 2 device pixels on every side to avoid residual edge lines
+          const expand = 2;
+          const x = Math.max(0, Math.round(left * dpr) - expand);
+          const y = Math.max(
+            0,
+            Math.round(this.canvas.height - (top + height) * dpr) - expand
+          );
+          const w = Math.min(
+            this.canvas.width - x,
+            Math.round(width * dpr) + expand * 2
+          );
+          const h = Math.min(
+            this.canvas.height - y,
+            Math.round(height * dpr) + expand * 2
+          );
+          if (w > 0 && h > 0) {
+            gl.enable(gl.SCISSOR_TEST);
+            gl.scissor(x, y, w, h);
+            gl.clearColor(0, 0, 0, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.disable(gl.SCISSOR_TEST);
+          }
+        }
+      });
     }
 
     /* ----------------------------- */
+    _renderLens(lens) {
+      const gl = this.gl;
+      const rect = lens.rectPx; // {left,top,width,height} in CSS px
+      if (!rect) return;
+
+      const dpr = Math.min(1, window.devicePixelRatio || 1);
+      const x = rect.left * dpr;
+      const y = this.canvas.height - (rect.top + rect.height) * dpr;
+      const w = rect.width * dpr;
+      const h = rect.height * dpr;
+      if (w <= 0 || h <= 0) return;
+
+      gl.viewport(x, y, w, h);
+      gl.uniform2f(this.u.res, w, h);
+
+      // Bounds in UV space of the snapshot texture
+      const docX = rect.left - this.snapshotTarget.getBoundingClientRect().left;
+      const docY = rect.top - this.snapshotTarget.getBoundingClientRect().top;
+      const leftUV = (docX * this.scaleFactor) / this.textureWidth;
+      const topUV = (docY * this.scaleFactor) / this.textureHeight;
+      const wUV = (rect.width * this.scaleFactor) / this.textureWidth;
+      const hUV = (rect.height * this.scaleFactor) / this.textureHeight;
+      gl.uniform4f(this.u.bounds, leftUV, topUV, wUV, hUV);
+
+      gl.uniform1f(this.u.refraction, lens.options.refraction);
+      gl.uniform1f(this.u.bevelDepth, lens.options.bevelDepth);
+      gl.uniform1f(this.u.bevelWidth, lens.options.bevelWidth);
+      gl.uniform1f(this.u.frost, lens.options.frost);
+      gl.uniform1f(this.u.radius, lens.radiusPx);
+      gl.uniform1i(this.u.specular, lens.options.specular ? 1 : 0);
+      gl.uniform1f(this.u.revealProgress, lens._revealProgress || 1.0);
+      gl.uniform1i(this.u.revealType, lens.revealTypeIndex || 0);
+
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+  }
+
+  /* --------------------------------------------------
+   *  Per-element lens wrapper
+   * ------------------------------------------------*/
+  class LiquidGLLens {
+    constructor(renderer, element, options) {
+      this.renderer = renderer;
+      this.el = element;
+      this.options = options;
+      this.rectPx = null; // updated in updateMetrics()
+      this.radiusPx = 0;
+      this.revealTypeIndex = this.options.reveal === "fade" ? 1 : 0;
+      this._revealProgress = this.revealTypeIndex === 0 ? 1 : 0;
+
+      this.originalShadow = this.el.style.boxShadow;
+      this.originalOpacity = this.el.style.opacity;
+      this.originalTransition = this.el.style.transition;
+      this.el.style.transition = "none";
+      this.el.style.opacity = 0;
+
+      // Ensure element is positioned for CSS transforms (tilt)
+      this.el.style.position =
+        this.el.style.position === "static"
+          ? "relative"
+          : this.el.style.position;
+
+      // Make underlying background transparent so canvas is visible
+      const bgCol = window.getComputedStyle(this.el).backgroundColor;
+      const rgbaMatch = bgCol.match(/rgba?\(([^)]+)\)/);
+      this._bgColorComponents = null;
+      if (rgbaMatch) {
+        const comps = rgbaMatch[1].split(/[ ,]+/).map(parseFloat);
+        const [r, g, b, a = 1] = comps;
+        this._bgColorComponents = { r, g, b, a };
+        this.el.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0)`;
+      }
+
+      // Remove CSS fallback effects once WebGL is confirmed to be in use
+      this.el.style.backdropFilter = "none";
+      this.el.style.webkitBackdropFilter = "none";
+      this.el.style.backgroundImage = "none";
+      this.el.style.background = "transparent";
+
+      this.updateMetrics();
+      this.setShadow(this.options.shadow);
+      if (this.options.tilt) this._bindTiltHandlers();
+
+      // Observe element for geometry changes (e.g., GSAP morphs)
+      if (typeof ResizeObserver !== "undefined" && !this._sizeObs) {
+        this._sizeObs = new ResizeObserver(() => {
+          this.updateMetrics();
+          this.renderer.render();
+        });
+        this._sizeObs.observe(this.el);
+      }
+    }
+
+    /* ----------------------------- */
+    updateMetrics() {
+      const rect = this.el.getBoundingClientRect();
+      this.rectPx = {
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+      };
+
+      const style = window.getComputedStyle(this.el);
+      const brRaw = style.borderTopLeftRadius.split(" ")[0];
+      const isPct = brRaw.trim().endsWith("%");
+      let brPx;
+      if (isPct) {
+        const pct = parseFloat(brRaw);
+        brPx = (Math.min(rect.width, rect.height) * pct) / 100;
+      } else {
+        brPx = parseFloat(brRaw);
+      }
+      const dpr = Math.min(1, window.devicePixelRatio || 1);
+      const maxAllowed = Math.min(rect.width, rect.height) * dpr * 0.5;
+      this.radiusPx = Math.min(brPx * dpr, maxAllowed);
+
+      // Ensure shadow layer morphs with the lens
+      if (this._shadowSyncFn) {
+        this._shadowSyncFn();
+      }
+    }
+
+    /* ----------------------------- */
+    setTilt(enabled) {
+      this.options.tilt = !!enabled;
+      if (this.options.tilt) {
+        this._bindTiltHandlers();
+      } else {
+        this._unbindTiltHandlers();
+      }
+    }
+
+    /* ----------------------------- */
+    setShadow(enabled) {
+      this.options.shadow = !!enabled;
+
+      const SHADOW_VAL =
+        "0 10px 30px rgba(0,0,0,0.1), 0 0 0 0.5px rgba(0,0,0,0.05)";
+
+      // Helper to keep the separate shadow layer in the right place/size
+      const syncShadow = () => {
+        if (!this._shadowEl) return;
+        const r = this.el.getBoundingClientRect();
+        this._shadowEl.style.left = `${r.left}px`;
+        this._shadowEl.style.top = `${r.top}px`;
+        this._shadowEl.style.width = `${r.width}px`;
+        this._shadowEl.style.height = `${r.height}px`;
+        this._shadowEl.style.borderRadius = `${this.radiusPx}px`;
+      };
+
+      if (enabled) {
+        // Apply a standard shadow directly (still useful in most cases)
+        this.el.style.boxShadow = SHADOW_VAL;
+
+        // Create an out-of-band (document-level) shadow that is NOT inside any
+        // mix-blend-mode or clipping context, guaranteeing visibility.
+        if (!this._shadowEl) {
+          this._shadowEl = document.createElement("div");
+          Object.assign(this._shadowEl.style, {
+            position: "fixed",
+            pointerEvents: "none",
+            zIndex: parseInt(this.renderer.canvas.style.zIndex || 2) - 1 || 1,
+            boxShadow: SHADOW_VAL,
+            willChange: "transform, width, height",
+          });
+          document.body.appendChild(this._shadowEl);
+
+          // Keep in sync on resize/scroll
+          this._shadowSyncFn = syncShadow;
+          window.addEventListener("resize", this._shadowSyncFn, {
+            passive: true,
+          });
+        }
+        syncShadow();
+      } else {
+        // Remove separate layer if it exists
+        if (this._shadowEl) {
+          window.removeEventListener("resize", this._shadowSyncFn);
+          this._shadowEl.remove();
+          this._shadowEl = null;
+        }
+        this.el.style.boxShadow = this.originalShadow;
+      }
+    }
+
+    /* ----------------------------- */
+    _reveal() {
+      if (this.revealTypeIndex === 0) {
+        // No reveal – just show immediately
+        this.el.style.opacity = this.originalOpacity || 1;
+        this._revealProgress = 1;
+        return;
+      }
+
+      if (this.renderer._revealAnimating) return; // Another lens controls the animation
+
+      this.renderer._revealAnimating = true;
+
+      const dur = 1000;
+      const start = performance.now();
+
+      const animate = () => {
+        const progress = Math.min(1, (performance.now() - start) / dur);
+
+        // Update all lenses uniformly
+        this.renderer.lenses.forEach((ln) => {
+          ln._revealProgress = progress;
+          ln.el.style.opacity = (ln.originalOpacity || 1) * progress;
+          if (ln._bgColorComponents) {
+            const { r, g, b, a } = ln._bgColorComponents;
+            ln.el.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${
+              a * progress
+            })`;
+          }
+        });
+
+        // Fade shared canvas
+        this.renderer.canvas.style.opacity = String(progress);
+
+        this.renderer.render();
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          // Cleanup
+          this.renderer._revealAnimating = false;
+          this.renderer.lenses.forEach((ln) => {
+            ln.el.style.transition = ln.originalTransition || "";
+          });
+        }
+      };
+
+      requestAnimationFrame(animate);
+    }
+
+    /* --------------------------------------------------
+     *  Very similar tilt logic to the original library – but only updates
+     *  CSS transforms on the lens element itself. The WebGL rendering is
+     *  re-triggered so that specular highlights keep moving.
+     * ------------------------------------------------*/
     _bindTiltHandlers() {
       if (this._tiltHandlersBound) return;
 
@@ -652,37 +662,101 @@
           this._tiltInteracting = true;
           this.el.style.transition =
             "transform 0.12s cubic-bezier(0.33,1,0.68,1)";
+          // Prepare mirror canvas for this lens
+          this._createMirrorCanvas();
+          if (this._mirror) {
+            this._mirror.style.transition =
+              "transform 0.12s cubic-bezier(0.33,1,0.68,1)";
+          }
+          if (this._shadowEl) {
+            this._shadowEl.style.transition =
+              "transform 0.12s cubic-bezier(0.33,1,0.68,1)";
+          }
         }
-        const rect = this._initialTiltRect || this.el.getBoundingClientRect();
+        const rect = this.el.getBoundingClientRect();
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
-        const dx = clientX - cx;
-        const dy = clientY - cy;
-        const pctX = dx / (rect.width / 2);
-        const pctY = dy / (rect.height / 2);
+
+        // Cache pivot so reset uses identical origin (prevents jump)
+        this._pivotOrigin = `${cx}px ${cy}px`;
+
+        const pctX = (clientX - cx) / (rect.width / 2);
+        const pctY = (clientY - cy) / (rect.height / 2);
         const maxTilt = getMaxTilt();
         const rotY = pctX * maxTilt;
         const rotX = -pctY * maxTilt;
-        this.el.style.transform = `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+        const transformStr = `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+
+        this.el.style.transform = transformStr;
+
+        if (this._mirror) {
+          this._mirror.style.transformOrigin = this._pivotOrigin;
+          this._mirror.style.transform = transformStr;
+        }
+
+        // Keep the separate shadow layer glued to the element while tilting
+        if (this._shadowEl) {
+          this._shadowEl.style.transformOrigin = "50% 50%";
+          this._shadowEl.style.transform = transformStr;
+        }
+
+        // Ensure highlights update immediately
+        this.renderer.render();
       };
 
+      // Mouse events
       this._onMouseEnter = () => {
         this._tiltInteracting = false;
+        this._createMirrorCanvas();
       };
+      this._onMouseMove = (e) => applyTilt(e.clientX, e.clientY);
+      const smoothReset = () => {
+        this.el.style.transition = "transform 0.4s cubic-bezier(0.33,1,0.68,1)";
+        this.el.style.transform =
+          "perspective(800px) rotateX(0deg) rotateY(0deg)";
+        if (this._mirror) {
+          this._mirror.style.transition =
+            "transform 0.4s cubic-bezier(0.33, 1, 0.68, 1)";
+          this._mirror.style.transformOrigin = this._pivotOrigin || "50% 50%";
+          this._mirror.style.transform =
+            "perspective(800px) rotateX(0deg) rotateY(0deg)";
+          // Remove mirror after transition ends (fallback timeout 450ms)
+          const clean = () => this._destroyMirrorCanvas();
+          this._mirror.addEventListener("transitionend", clean, {
+            once: true,
+          });
+          setTimeout(clean, 350);
+        }
+
+        if (this._shadowEl) {
+          this._shadowEl.style.transition =
+            "transform 0.4s cubic-bezier(0.33,1,0.68,1)";
+          this._shadowEl.style.transformOrigin = "50% 50%";
+          this._shadowEl.style.transform =
+            "perspective(800px) rotateX(0deg) rotateY(0deg)";
+        }
+      };
+      this._onMouseLeave = () => {
+        smoothReset();
+      };
+
+      // Touch events (single–finger only)
       this._onTouchStart = (e) => {
         this._tiltInteracting = false;
+        this._createMirrorCanvas();
         if (e.touches && e.touches.length === 1) {
           const t = e.touches[0];
           applyTilt(t.clientX, t.clientY);
         }
       };
-
-      this._onMouseMove = (e) => applyTilt(e.clientX, e.clientY);
-      this._onMouseLeave = () => {
-        this.el.style.transition =
-          "transform 0.4s cubic-bezier(0.33, 1, 0.68, 1)";
-        this.el.style.transform =
-          "perspective(800px) rotateX(0deg) rotateY(0deg)";
+      this._onTouchMove = (e) => {
+        if (e.touches && e.touches.length === 1) {
+          const t = e.touches[0];
+          applyTilt(t.clientX, t.clientY);
+        }
+      };
+      this._onTouchEnd = () => {
+        smoothReset();
       };
 
       this.el.addEventListener("mouseenter", this._onMouseEnter, {
@@ -700,12 +774,13 @@
       this.el.addEventListener("touchmove", this._onTouchMove, {
         passive: true,
       });
-      this.el.addEventListener("touchend", this._onTouchEnd, { passive: true });
+      this.el.addEventListener("touchend", this._onTouchEnd, {
+        passive: true,
+      });
 
       this._tiltHandlersBound = true;
     }
 
-    /* ----------------------------- */
     _unbindTiltHandlers() {
       if (!this._tiltHandlersBound) return;
       this.el.removeEventListener("mouseenter", this._onMouseEnter);
@@ -716,25 +791,58 @@
       this.el.removeEventListener("touchend", this._onTouchEnd);
       this._tiltHandlersBound = false;
       this.el.style.transform = "";
+      this.renderer.render();
     }
 
-    /* ----------------------------- */
-    setTilt(enabled) {
-      this.options.tilt = !!enabled;
-      if (this.options.tilt) {
-        this._bindTiltHandlers();
-      } else {
-        this._unbindTiltHandlers();
-      }
+    _createMirrorCanvas() {
+      if (this._mirror) return;
+      this._mirror = document.createElement("canvas");
+      Object.assign(this._mirror.style, {
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
+        zIndex: parseInt(this.renderer.canvas.style.zIndex || 2) + 1,
+        willChange: "transform",
+      });
+      this._mirrorCtx = this._mirror.getContext("2d");
+      document.body.appendChild(this._mirror);
+
+      // Clip mirror to lens rectangle (updates on resize)
+      const updateClip = () => {
+        const r = this.el.getBoundingClientRect();
+        const radius = `${this.radiusPx}px`;
+        this._mirror.style.clipPath = `inset(${r.top}px ${
+          innerWidth - r.right
+        }px ${innerHeight - r.bottom}px ${r.left}px round ${radius})`;
+        this._mirror.style.webkitClipPath = this._mirror.style.clipPath;
+      };
+      updateClip();
+      this._mirrorClipUpdater = updateClip;
+      window.addEventListener("resize", updateClip, { passive: true });
+
+      // Mirror content will be copied each render pass
+      this._mirrorActive = true; // flag for renderer
+    }
+
+    _destroyMirrorCanvas() {
+      if (!this._mirror) return;
+      window.removeEventListener("resize", this._mirrorClipUpdater);
+      this._mirror.remove();
+      this._mirror = this._mirrorCtx = null;
+
+      this._mirrorActive = false;
     }
   }
 
   /* --------------------------------------------------
-   *  Public API
+   *  Public factory
    * ------------------------------------------------*/
   window.LiquidGL = function (userOptions = {}) {
     const defaults = {
-      target: ".selector",
+      target: ".menu-wrap",
       snapshot: "body",
       refraction: 0.01,
       bevelDepth: 0.08,
@@ -745,24 +853,62 @@
       reveal: "fade",
       tilt: false,
       tiltFactor: 5,
-      on: {},
     };
     const options = { ...defaults, ...userOptions };
 
-    const targetEl = document.querySelector(options.target);
-    if (!targetEl) {
-      console.warn(`LiquidGL: Target element "${options.target}" not found.`);
-      return;
+    // --------------------------------------------------
+    // 1) Quick capability check – run once per page
+    // --------------------------------------------------
+    if (typeof window.__LiquidGLNoWebGL__ === "undefined") {
+      const testCanvas = document.createElement("canvas");
+      const testCtx =
+        testCanvas.getContext("webgl2") ||
+        testCanvas.getContext("webgl") ||
+        testCanvas.getContext("experimental-webgl");
+      window.__LiquidGLNoWebGL__ = !testCtx;
     }
 
-    if (targetEl._LiquidGL) {
+    const noWebGL = window.__LiquidGLNoWebGL__;
+
+    if (noWebGL) {
       console.warn(
-        `LiquidGL: Already initialized on target element "${options.target}".`
+        "LiquidGL: WebGL not available – falling back to CSS backdrop-filter."
+      );
+      // Nothing else to do; leave the elements with their CSS fallback styles.
+      const fallbackNodes = document.querySelectorAll(options.target);
+      return fallbackNodes.length === 1
+        ? fallbackNodes[0]
+        : Array.from(fallbackNodes);
+    }
+
+    // Create (or reuse) the shared renderer
+    let renderer = window.__LiquidGLRenderer__;
+    if (!renderer) {
+      renderer = new LiquidGLRenderer(options.snapshot);
+      window.__LiquidGLRenderer__ = renderer;
+    }
+
+    const nodeList = document.querySelectorAll(options.target);
+    if (!nodeList || nodeList.length === 0) {
+      console.warn(
+        `LiquidGL: Target element(s) '${options.target}' not found.`
       );
       return;
     }
 
-    targetEl._LiquidGL = new LiquidGL(targetEl, options);
-    return targetEl._LiquidGL;
+    const instances = Array.from(nodeList).map((el) =>
+      renderer.addLens(el, options)
+    );
+
+    // Kick off the render loop (one per page)
+    if (!renderer._rafId) {
+      const loop = () => {
+        renderer.render();
+        renderer._rafId = requestAnimationFrame(loop);
+      };
+      renderer._rafId = requestAnimationFrame(loop);
+    }
+
+    return instances.length === 1 ? instances[0] : instances;
   };
 })();
