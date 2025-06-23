@@ -593,6 +593,10 @@
             "transform 0.12s cubic-bezier(0.33,1,0.68,1)";
           // Prepare mirror canvas for this lens
           this._createMirrorCanvas();
+          if (this._mirror) {
+            this._mirror.style.transition =
+              "transform 0.12s cubic-bezier(0.33,1,0.68,1)";
+          }
         }
         const rect = this.el.getBoundingClientRect();
         const cx = rect.left + rect.width / 2;
@@ -617,12 +621,25 @@
         this._createMirrorCanvas();
       };
       this._onMouseMove = (e) => applyTilt(e.clientX, e.clientY);
-      this._onMouseLeave = () => {
+      const smoothReset = () => {
         this.el.style.transition = "transform 0.4s cubic-bezier(0.33,1,0.68,1)";
         this.el.style.transform =
           "perspective(800px) rotateX(0deg) rotateY(0deg)";
-        this._destroyMirrorCanvas();
-        this.renderer.render();
+        if (this._mirror) {
+          this._mirror.style.transition =
+            "transform 0.4s cubic-bezier(0.33,1,0.68,1)";
+          this._mirror.style.transform =
+            "perspective(800px) rotateX(0deg) rotateY(0deg)";
+          // Remove mirror after transition ends (fallback timeout 450ms)
+          const clean = () => this._destroyMirrorCanvas();
+          this._mirror.addEventListener("transitionend", clean, {
+            once: true,
+          });
+          setTimeout(clean, 450);
+        }
+      };
+      this._onMouseLeave = () => {
+        smoothReset();
       };
 
       // Touch events (single–finger only)
@@ -641,12 +658,7 @@
         }
       };
       this._onTouchEnd = () => {
-        this.el.style.transition =
-          "transform 0.4s cubic-bezier(0.33, 1, 0.68, 1)";
-        this.el.style.transform =
-          "perspective(800px) rotateX(0deg) rotateY(0deg)";
-        this._destroyMirrorCanvas();
-        this.renderer.render();
+        smoothReset();
       };
 
       this.el.addEventListener("mouseenter", this._onMouseEnter, {
