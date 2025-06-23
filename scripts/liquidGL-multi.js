@@ -765,6 +765,10 @@
 
       // Mirror content will be copied each render pass
       this._mirrorActive = true; // flag for renderer
+
+      // Hide out-of-band shadow while element tilts so the static shadow
+      // doesn't appear to detach from the card.
+      if (this._shadowEl) this._shadowEl.style.display = "none";
     }
 
     _destroyMirrorCanvas() {
@@ -774,6 +778,9 @@
       this._mirror = this._mirrorCtx = null;
 
       this._mirrorActive = false;
+
+      // Restore shadow layer now that tilt has ended.
+      if (this._shadowEl) this._shadowEl.style.display = "";
     }
   }
 
