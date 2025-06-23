@@ -199,7 +199,7 @@
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.20/dist/lil-gui.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery.ripples@0.6.3/dist/jquery.ripples.min.js"></script>
@@ -314,43 +314,70 @@
             tilt: false,
             tiltFactor: 5,
             reveal: "fade",
-            on: {
-              init(instance) {
-                // Setup lil-gui controls only after LiquidGL is fully initialised
-                gui = new lil.GUI();
-                glassFolder = gui.addFolder("LiquidGL Effect");
-
-                glassFolder
-                  .add(instance.options, "refraction", 0, 0.1, 0.001)
-                  .name("Refraction");
-                glassFolder
-                  .add(instance.options, "bevelDepth", 0, 0.2, 0.001)
-                  .name("Bevel Depth");
-                glassFolder
-                  .add(instance.options, "bevelWidth", 0, 0.5, 0.001)
-                  .name("Bevel Width");
-                glassFolder
-                  .add(instance.options, "frost", 0, 10, 0.1)
-                  .name("Frost");
-                glassFolder.add(instance.options, "specular").name("Specular");
-                glassFolder
-                  .add(instance.options, "shadow")
-                  .name("Enable Shadow")
-                  .onChange((value) => {
-                    instance.setShadow(value);
-                  });
-                glassFolder
-                  .add(instance.options, "tilt")
-                  .name("Tilt")
-                  .onChange((v) => instance.setTilt(v));
-                glassFolder
-                  .add(instance.options, "tiltFactor", 0, 25, 0.1)
-                  .name("Tilt Factor");
-                glassFolder.add(instance.options, "reveal").name("reveal");
-                glassFolder.close();
-              },
-            },
           });
+
+          // Build GUI after LiquidGL initialised (multi-awareness)
+          const lensList = Array.isArray(glassEffect)
+            ? glassEffect
+            : [glassEffect];
+          const firstLens = lensList[0];
+
+          gui = new lil.GUI();
+          glassFolder = gui.addFolder("LiquidGL Effect");
+
+          const updateAll = (key, value) => {
+            lensList.forEach((ln) => {
+              ln.options[key] = value;
+              if (key === "shadow") ln.setShadow(value);
+              if (key === "tilt") ln.setTilt(value);
+            });
+          };
+
+          glassFolder
+            .add(firstLens.options, "refraction", 0, 0.1, 0.001)
+            .name("Refraction")
+            .onChange((v) => updateAll("refraction", v));
+
+          glassFolder
+            .add(firstLens.options, "bevelDepth", 0, 0.2, 0.001)
+            .name("Bevel Depth")
+            .onChange((v) => updateAll("bevelDepth", v));
+
+          glassFolder
+            .add(firstLens.options, "bevelWidth", 0, 0.5, 0.001)
+            .name("Bevel Width")
+            .onChange((v) => updateAll("bevelWidth", v));
+
+          glassFolder
+            .add(firstLens.options, "frost", 0, 10, 0.1)
+            .name("Frost")
+            .onChange((v) => updateAll("frost", v));
+
+          glassFolder
+            .add(firstLens.options, "specular")
+            .name("Specular")
+            .onChange((v) => updateAll("specular", v));
+
+          glassFolder
+            .add(firstLens.options, "shadow")
+            .name("Shadow")
+            .onChange((v) => updateAll("shadow", v));
+
+          glassFolder
+            .add(firstLens.options, "tilt")
+            .name("Tilt")
+            .onChange((v) => updateAll("tilt", v));
+
+          glassFolder
+            .add(firstLens.options, "tiltFactor", 0, 25, 0.1)
+            .name("Tilt Factor")
+            .onChange((v) => updateAll("tiltFactor", v));
+
+          glassFolder
+            .add(firstLens.options, "reveal", ["none", "fade"])
+            .name("Reveal");
+
+          glassFolder.close();
         }
 
         window.addEventListener("load", function () {
@@ -361,8 +388,13 @@
 
           gsap.ticker.add((time) => {
             lenis.raf(time * 1000);
-            if (glassEffect) {
-              glassEffect.render(); // Render in sync with Lenis
+            if (window.glassEffect) {
+              if (Array.isArray(window.glassEffect)) {
+                if (window.__LiquidGLRenderer__)
+                  window.__LiquidGLRenderer__.render();
+              } else if (!window.glassEffect.options.specular) {
+                window.glassEffect.render();
+              }
             }
           });
 
