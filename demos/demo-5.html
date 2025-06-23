@@ -34,35 +34,44 @@
         object-fit: cover;
         will-change: transform;
       }
-      /* ===== Circle of shapes ===== */
-      .shapes-anchor {
+      /* ===== Single full-viewport lens ===== */
+      .shape {
         position: fixed;
+        top: 10vw;
+        left: 10vw;
+        width: calc(100vw - 20vw);
+        height: calc(100vh - 20vw);
+        border-radius: 2vw;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(20px) saturate(180%);
+        will-change: transform;
+        pointer-events: auto;
+        z-index: 9999;
+      }
+
+      .banner-text-container {
+        position: absolute;
         inset: 0;
         display: flex;
         justify-content: center;
         align-items: center;
+        max-width: 60%;
+        margin: 0 auto;
+        height: 100%;
+        padding-top: 150svh;
+      }
+
+      /* Headline text under lens */
+      .banner-text {
+        width: 100%;
+        text-align: center;
+        margin: 40vh auto; /* centre it visually in the long column */
+        font-size: 7vw;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: #ffffff;
         pointer-events: none;
-        z-index: 9999;
-      }
-      .shape {
-        position: absolute;
-        width: 10vw;
-        height: 10vw;
-        border-radius: 2vw;
-        will-change: transform;
-        pointer-events: auto;
-      }
-      .shape:nth-child(1) {
-        --angle: 0deg;
-      }
-      .shape:nth-child(2) {
-        --angle: 90deg;
-      }
-      .shape:nth-child(3) {
-        --angle: 180deg;
-      }
-      .shape:nth-child(4) {
-        --angle: 270deg;
+        line-height: 0.85;
       }
     </style>
     <!-- Libraries -->
@@ -73,6 +82,13 @@
   </head>
   <body>
     <div class="main-content">
+      <div class="banner-text-container">
+        <div class="banner-text">
+          LIQUIDGL IS A WEB BASED LIQUID GLASS REFRACTION UTILITY. DEVELOPED IN
+          MANCHESTER, UK BY THE NAUGHTYDUK© TEAM. LET US KNOW IF YOU USE IT IN
+          THE WILD, OR IF YOU HAVE ANY FEEDBACK, SHARING IS CARING, AFTERALL.
+        </div>
+      </div>
       <div class="image-container">
         <img src="/assets/liquid-bkg-_0000_Comp-33.webp" alt="bg" />
       </div>
@@ -82,21 +98,10 @@
       <div class="image-container">
         <img src="/assets/liquid-bkg-_0002_Comp-163.webp" alt="bg" />
       </div>
-      <div class="image-container">
-        <img src="/assets/liquid-bkg-_0003_Comp-151.webp" alt="bg" />
-      </div>
-      <div class="image-container">
-        <img src="/assets/liquid-bkg-_0004_Comp-13.webp" alt="bg" />
-      </div>
     </div>
 
-    <!-- Circular shapes -->
-    <div class="shapes-anchor">
-      <div class="shape"></div>
-      <div class="shape"></div>
-      <div class="shape"></div>
-      <div class="shape"></div>
-    </div>
+    <!-- Single lens shape -->
+    <div class="shape"></div>
 
     <!-- Scripts -->
     <script src="/scripts/html2canvas.js"></script>
@@ -104,72 +109,20 @@
     <script>
       let glassEffect;
       document.addEventListener("DOMContentLoaded", () => {
-        /* 1. Init LiquidGL on all .shape elements */
+        /* 1. Init LiquidGL on the big viewport shape */
         glassEffect = LiquidGL({
           target: ".shape",
           snapshot: ".main-content",
-          refraction: 0.083,
-          bevelDepth: 0.134,
-          bevelWidth: 0.18,
-          frost: 1.5,
+          refraction: 0.026,
+          bevelDepth: 0.119,
+          bevelWidth: 0.057,
+          frost: 0,
           specular: true,
           shadow: true,
           reveal: "fade",
         });
 
-        /* 2. Position shapes in circle */
-        const radius = 22; // vw
-        const updatePositions = () => {
-          document.querySelectorAll(".shape").forEach((el, i) => {
-            const angle =
-              (parseFloat(getComputedStyle(el).getPropertyValue("--angle")) *
-                Math.PI) /
-              180;
-            el.style.transform = `translate3d(${radius * Math.cos(angle)}vw, ${
-              radius * Math.sin(angle)
-            }vw,0)`;
-          });
-        };
-        updatePositions();
-        window.addEventListener("resize", updatePositions, { passive: true });
-
-        /* 3. Scroll-driven animation: rotate the circle + morph shapes */
-        gsap.registerPlugin(ScrollTrigger);
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: ".main-content",
-            start: "top top",
-            end: "+=2500", // long virtual range
-            scrub: true,
-          },
-        });
-
-        // Morph: first to circle, then to pill, then back to rounded rect
-        tl.to(".shape", { borderRadius: "50%", duration: 2, ease: "none" }, 0)
-          .to(
-            ".shape",
-            {
-              width: "10vw",
-              height: "4vw",
-              borderRadius: "2vw",
-              duration: 2,
-              ease: "none",
-            },
-            2
-          )
-          .to(
-            ".shape",
-            {
-              width: "10vw",
-              height: "4vw",
-              borderRadius: "2vw",
-              duration: 2,
-              ease: "none",
-            },
-            4
-          );
-
-        /* 4. lil-gui controls (for first shape, propagate to all) */
+        /* 2. lil-gui controls (for first shape, propagate to all) */
         const lensArr = Array.isArray(glassEffect)
           ? glassEffect
           : [glassEffect];
@@ -201,7 +154,7 @@
         folder.add(first.options, "reveal", ["none", "fade"]).name("Reveal");
         folder.close();
 
-        /* 5. Lenis + GSAP ticker sync (same pattern as other demos) */
+        /* 3. Lenis + GSAP ticker sync (same pattern as other demos) */
         window.addEventListener("load", () => {
           const lenis = new Lenis();
           lenis.on("scroll", ScrollTrigger.update);
@@ -212,7 +165,8 @@
                 if (window.__LiquidGLRenderer__)
                   window.__LiquidGLRenderer__.render();
               } else if (!glassEffect.options.specular) {
-                glassEffect.render();
+                if (window.__LiquidGLRenderer__)
+                  window.__LiquidGLRenderer__.render();
               }
             }
           });
