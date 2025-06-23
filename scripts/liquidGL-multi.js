@@ -148,7 +148,8 @@
 
           float edge = edgeFactor(v_uv, u_radius);
           float offsetAmt = edge * u_refraction + pow(edge, 10.0) * u_bevelDepth;
-          vec2 offset = dir * offsetAmt;
+          float centreBlend = smoothstep(0.15, 0.45, length(delta));
+          vec2 offset = dir * offsetAmt * centreBlend;
 
           vec2 flippedUV = vec2(v_uv.x, 1.0 - v_uv.y);
           vec2 mapped = u_bounds.xy + flippedUV * u_bounds.zw;
