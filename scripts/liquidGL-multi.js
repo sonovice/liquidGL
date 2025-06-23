@@ -346,6 +346,8 @@
     render() {
       const gl = this.gl;
       if (!this.texture) return;
+
+      // 1. Draw all lenses
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.useProgram(this.program);
@@ -357,6 +359,40 @@
       gl.uniform1f(this.u.time, time);
 
       this.lenses.forEach((lens) => this._renderLens(lens));
+
+      // 2. Copy shared canvas into any active mirrors
+      this.lenses.forEach((ln) => {
+        if (ln._mirrorActive && ln._mirrorCtx) {
+          const mirror = ln._mirror;
+          if (
+            mirror.width !== this.canvas.width ||
+            mirror.height !== this.canvas.height
+          ) {
+            mirror.width = this.canvas.width;
+            mirror.height = this.canvas.height;
+          }
+          ln._mirrorCtx.drawImage(this.canvas, 0, 0);
+        }
+      });
+
+      // 3. Clear areas of shared canvas for active mirrors (remove static copy)
+      const dpr = Math.min(1, window.devicePixelRatio || 1);
+      this.lenses.forEach((ln) => {
+        if (ln._mirrorActive && ln.rectPx) {
+          const { left, top, width, height } = ln.rectPx;
+          const x = Math.round(left * dpr);
+          const y = Math.round(this.canvas.height - (top + height) * dpr);
+          const w = Math.round(width * dpr);
+          const h = Math.round(height * dpr);
+          if (w > 0 && h > 0) {
+            gl.enable(gl.SCISSOR_TEST);
+            gl.scissor(x, y, w, h);
+            gl.clearColor(0, 0, 0, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.disable(gl.SCISSOR_TEST);
+          }
+        }
+      });
     }
 
     /* ----------------------------- */
@@ -677,29 +713,17 @@
       this._mirrorClipUpdater = updateClip;
       window.addEventListener("resize", updateClip, { passive: true });
 
-      // Start blitting shared canvas into mirror every frame
-      const blit = () => {
-        if (!this._mirror) return;
-        const src = this.renderer.canvas;
-        if (
-          this._mirror.width !== src.width ||
-          this._mirror.height !== src.height
-        ) {
-          this._mirror.width = src.width;
-          this._mirror.height = src.height;
-        }
-        this._mirrorCtx.drawImage(src, 0, 0);
-        this._mirrorRAF = requestAnimationFrame(blit);
-      };
-      this._mirrorRAF = requestAnimationFrame(blit);
+      // Mirror content will be copied each render pass
+      this._mirrorActive = true; // flag for renderer
     }
 
     _destroyMirrorCanvas() {
       if (!this._mirror) return;
-      cancelAnimationFrame(this._mirrorRAF);
       window.removeEventListener("resize", this._mirrorClipUpdater);
       this._mirror.remove();
       this._mirror = this._mirrorCtx = null;
+
+      this._mirrorActive = false;
     }
   }
 
