@@ -98,7 +98,6 @@
         height: 100%;
         object-fit: cover;
         border-radius: 24px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
         will-change: transform;
       }
 
@@ -461,10 +460,7 @@
           liquidGL effect cannot support real-time refraction of moving
           content i.e video. The effect relies on the page content being visible
           on load as it takes a high-resolution snapshot of the page background
-          when liquidGL is first initialised. You can make the effect
-          compatible with scroll animations by making all content visible on
-          load and then setting initial animation states in the on.init()
-          function. You should set above the fold animations i.e intro animations to run before
+          when liquidGL is first initialised. You should set above the fold animations i.e intro animations to run before
           initialising liquidGL.</br></br><strong>This
           effect requires a browser with WebGL support.</strong>
         </p>
