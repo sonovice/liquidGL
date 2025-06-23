@@ -526,6 +526,11 @@
       const dpr = Math.min(1, window.devicePixelRatio || 1);
       const maxAllowed = Math.min(rect.width, rect.height) * dpr * 0.5;
       this.radiusPx = Math.min(brPx * dpr, maxAllowed);
+
+      // Ensure shadow layer morphs with the lens
+      if (this._shadowSyncFn) {
+        this._shadowSyncFn();
+      }
     }
 
     /* ----------------------------- */
