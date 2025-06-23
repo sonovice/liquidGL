@@ -375,10 +375,21 @@
       this.lenses.forEach((ln) => {
         if (ln._mirrorActive && ln.rectPx) {
           const { left, top, width, height } = ln.rectPx;
-          const x = Math.round(left * dpr);
-          const y = Math.round(this.canvas.height - (top + height) * dpr);
-          const w = Math.round(width * dpr);
-          const h = Math.round(height * dpr);
+          // Expand by 2 device pixels on every side to avoid residual edge lines
+          const expand = 2;
+          const x = Math.max(0, Math.round(left * dpr) - expand);
+          const y = Math.max(
+            0,
+            Math.round(this.canvas.height - (top + height) * dpr) - expand
+          );
+          const w = Math.min(
+            this.canvas.width - x,
+            Math.round(width * dpr) + expand * 2
+          );
+          const h = Math.min(
+            this.canvas.height - y,
+            Math.round(height * dpr) + expand * 2
+          );
           if (w > 0 && h > 0) {
             gl.enable(gl.SCISSOR_TEST);
             gl.scissor(x, y, w, h);
