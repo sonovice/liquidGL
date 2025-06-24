@@ -595,6 +595,47 @@
         const drawW = Math.round(texW);
         const drawH = Math.round(texH);
 
+        // If the element has moved, heal its previous area with the static snapshot
+        if (
+          node.prevDrawRect &&
+          (node.prevDrawRect.x !== drawX ||
+            node.prevDrawRect.y !== drawY ||
+            node.prevDrawRect.w !== drawW ||
+            node.prevDrawRect.h !== drawH)
+        ) {
+          const { x: oldX, y: oldY, w: oldW, h: oldH } = node.prevDrawRect;
+          if (!this._healCtx) {
+            this._healCtx = document.createElement("canvas").getContext("2d");
+          }
+          const healCanvas = this._healCtx.canvas;
+          healCanvas.width = oldW;
+          healCanvas.height = oldH;
+          this._healCtx.clearRect(0, 0, oldW, oldH);
+          this._healCtx.drawImage(
+            this.staticSnapshotCanvas,
+            oldX,
+            oldY,
+            oldW,
+            oldH,
+            0,
+            0,
+            oldW,
+            oldH
+          );
+
+          gl.bindTexture(gl.TEXTURE_2D, this.texture);
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+          gl.texSubImage2D(
+            gl.TEXTURE_2D,
+            0,
+            oldX,
+            oldY,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            healCanvas
+          );
+        }
+
         if (
           node.prevDrawRect &&
           node.prevDrawRect.x === drawX &&
