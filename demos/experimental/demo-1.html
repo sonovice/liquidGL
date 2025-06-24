@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Demo 5 – Circular Morphs (LiquidGL-multi)</title>
+    <link rel="icon" href="/assets/favicon.ico" />
+    <style>
+      /* ===== Base styles copied from demo-3 and trimmed ===== */
+      :root {
+        --bg: #f0f0f0;
+        --fg: #333;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      .image-container {
+        height: 100svh;
+        overflow: clip;
+      }
+      .image-container img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        will-change: transform;
+      }
+      /* ===== Single full-viewport lens ===== */
+      .shape {
+        position: fixed;
+        top: 10vw;
+        left: 10vw;
+        width: calc(100vw - 20vw);
+        height: calc(100vh - 20vw);
+        border-radius: 2vw;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(20px) saturate(180%);
+        will-change: transform;
+        pointer-events: auto;
+        z-index: 9999;
+      }
+
+      .banner-text-container {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        max-width: 60%;
+        margin: 0 auto;
+        height: 100%;
+        padding-top: 150svh;
+        padding-bottom: 100svh;
+      }
+
+      /* Headline text under lens */
+      .banner-text {
+        width: 100%;
+        text-align: center;
+        margin: 20vh auto; /* centre it visually in the long column */
+        font-size: 7vw;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: #ffffff;
+        pointer-events: none;
+        line-height: 0.85;
+        position: relative;
+        z-index: 1;
+      }
+
+      .banner-video {
+        position: relative;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: auto;
+        object-fit: cover;
+        pointer-events: none;
+        border-radius: 2vw;
+        overflow: clip;
+      }
+    </style>
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/SplitText.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+  </head>
+  <body>
+    <div class="main-content">
+      <div class="banner-text-container">
+        <div class="banner-text">
+          LIQUIDGL EXPERIEMENTAL, FOR USE WITH VIDEO AND ANIMATIONS FOR REAL
+          TIME REFRACTION.
+        </div>
+        <video
+          class="banner-video"
+          src="/assets/BigBuckBunny.mp4"
+          autoplay
+          muted
+          loop
+          playsinline
+        ></video>
+        <div class="banner-text split">
+          LIQUIDGL EXPERIEMENTAL, FOR USE WITH VIDEO AND ANIMATIONS FOR REAL
+          TIME REFRACTION.
+        </div>
+      </div>
+      <div class="image-container">
+        <img src="/assets/liquid-bkg-_0000_Comp-33.webp" alt="bg" />
+      </div>
+      <div class="image-container">
+        <img src="/assets/liquid-bkg-_0001_Comp-183.webp" alt="bg" />
+      </div>
+      <div class="image-container">
+        <img src="/assets/liquid-bkg-_0002_Comp-163.webp" alt="bg" />
+      </div>
+    </div>
+
+    <!-- Single lens shape -->
+    <div class="shape"></div>
+
+    <!-- Scripts -->
+    <script src="/scripts/html2canvas.js"></script>
+    <script src="/scripts/liquidGL-experimental.js"></script>
+    <script>
+      // GSAP SplitText Animation
+      gsap.registerPlugin(SplitText);
+
+      let glassEffect;
+
+      document.addEventListener("DOMContentLoaded", () => {
+        /*
+      1. Init LiquidGL on the big viewport shape */
+        glassEffect = LiquidGL({
+          target: ".shape",
+          snapshot: "body",
+          refraction: 0.026,
+          bevelDepth: 0.119,
+          bevelWidth: 0.057,
+          frost: 0,
+          specular: true,
+          shadow: true,
+          reveal: "fade",
+          on: {
+            init(instance) {
+              const fontsReady =
+                document.fonts && document.fonts.ready
+                  ? document.fonts.ready
+                  : Promise.resolve();
+
+              fontsReady.then(() => {
+                // Prepare SplitText and set the element visible
+                gsap.set(".split", { visibility: "visible" });
+
+                const split = SplitText.create(".split", {
+                  type: "lines",
+                  linesClass: "line",
+                  mask: "lines",
+                });
+
+                // Animate lines when the element's top reaches 80% of the viewport height
+                gsap.from(split.lines, {
+                  scrollTrigger: {
+                    trigger: ".split",
+                    start: "top 80%",
+                    once: true,
+                  },
+                  duration: 0.8,
+                  yPercent: 100,
+                  stagger: 0.1,
+                  ease: "expo.out",
+                });
+              });
+              console.log("liquidGL ready!", instance);
+            },
+          },
+        });
+
+        /* 2. lil-gui controls (for first shape, propagate to all) */ const lensArr =
+          Array.isArray(glassEffect) ? glassEffect : [glassEffect];
+        const gui = new lil.GUI();
+        const folder = gui.addFolder("LiquidGL Effect");
+        const first = lensArr[0];
+        const sync = (k, v) => lensArr.forEach((ln) => (ln.options[k] = v));
+        folder
+          .add(first.options, "refraction", 0, 0.1, 0.001)
+          .onChange((v) => sync("refraction", v));
+        folder
+          .add(first.options, "bevelDepth", 0, 0.2, 0.001)
+          .onChange((v) => sync("bevelDepth", v));
+        folder
+          .add(first.options, "bevelWidth", 0, 0.5, 0.001)
+          .onChange((v) => sync("bevelWidth", v));
+        folder
+          .add(first.options, "frost", 0, 10, 0.1)
+          .onChange((v) => sync("frost", v));
+        folder
+          .add(first.options, "specular")
+          .onChange((v) => sync("specular", v));
+        folder
+          .add(first.options, "shadow")
+          .name("Shadow")
+          .onChange((v) => {
+            lensArr.forEach((ln) => ln.setShadow(v));
+          });
+        folder.add(first.options, "reveal", ["none", "fade"]).name("Reveal");
+        folder.close();
+        /* 3. Lenis + GSAP ticker sync
+      (same pattern as other demos) */ window.addEventListener("load", () => {
+          const lenis = new Lenis();
+          lenis.on("scroll", ScrollTrigger.update);
+          gsap.ticker.add((t) => {
+            lenis.raf(t * 1000);
+            if (glassEffect) {
+              if (Array.isArray(glassEffect)) {
+                if (window.__LiquidGLRenderer__)
+                  window.__LiquidGLRenderer__.render();
+              } else if (!glassEffect.options.specular) {
+                if (window.__LiquidGLRenderer__)
+                  window.__LiquidGLRenderer__.render();
+              }
+            }
+          });
+          gsap.ticker.lagSmoothing(0);
+        });
+      });
+    </script>
+  </body>
+</html>

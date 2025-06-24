@@ -100,6 +100,15 @@
 
       this._pendingReveal = [];
 
+      /* --------------------------------------------------
+       *  Dynamic media (video) support – experimental
+       * ------------------------------------------------*/
+      this._videoNodes = Array.from(
+        this.snapshotTarget.querySelectorAll("video")
+      );
+      this._tmpCanvas = document.createElement("canvas");
+      this._tmpCtx = this._tmpCanvas.getContext("2d");
+
       this.canvas.style.opacity = "0";
     }
 
@@ -160,6 +169,11 @@
 
           vec4 baseCol   = texture2D(u_tex, mapped);      // no refraction
           vec4 refrCol   = texture2D(u_tex, sampleUV);    // with refraction
+
+          // If refracted sample is from a clipped video corner (alpha ~0), use base color instead.
+          if (refrCol.a < 0.1) {
+              refrCol = baseCol;
+          }
 
           // How different are they?  0 = identical, 1 = extreme difference
           float diff = clamp(length(refrCol.rgb - baseCol.rgb) * 4.0, 0.0, 1.0);
@@ -353,6 +367,9 @@
       const time = (Date.now() - this.startTime) / 1000;
       gl.uniform1f(this.u.time, time);
 
+      // Update dynamic video regions before sampling
+      this._updateDynamicVideos();
+
       this.lenses.forEach((lens) => {
         lens.updateMetrics();
         if (lens._mirrorActive && lens._mirrorClipUpdater) {
@@ -438,6 +455,110 @@
       gl.uniform1i(this.u.revealType, lens.revealTypeIndex || 0);
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+
+    /* ----------------------------- */
+    _createRoundedRectPath(ctx, w, h, radii) {
+      ctx.beginPath();
+      ctx.moveTo(radii.tl, 0);
+      ctx.lineTo(w - radii.tr, 0);
+      ctx.arcTo(w, 0, w, radii.tr, radii.tr);
+      ctx.lineTo(w, h - radii.br);
+      ctx.arcTo(w, h, w - radii.br, h, radii.br);
+      ctx.lineTo(radii.bl, h);
+      ctx.arcTo(0, h, 0, h - radii.bl, radii.bl);
+      ctx.lineTo(0, radii.tl);
+      ctx.arcTo(0, 0, radii.tl, 0, radii.tl);
+      ctx.closePath();
+    }
+
+    /* ----------------------------- */
+    _updateDynamicVideos() {
+      if (!this.texture || !this._videoNodes.length) return;
+      const gl = this.gl;
+
+      const snapRect = this.snapshotTarget.getBoundingClientRect();
+
+      this._videoNodes.forEach((vid) => {
+        if (vid.readyState < 2) return; // not enough data
+        const rect = vid.getBoundingClientRect();
+
+        // Dimensions in CSS px relative to snapshotTarget origin
+        const docX = rect.left - snapRect.left;
+        const docY = rect.top - snapRect.top;
+
+        const scaledW = Math.round(rect.width * this.scaleFactor);
+        const scaledH = Math.round(rect.height * this.scaleFactor);
+
+        if (scaledW === 0 || scaledH === 0) return;
+
+        // Prepare temp canvas
+        if (
+          this._tmpCanvas.width !== scaledW ||
+          this._tmpCanvas.height !== scaledH
+        ) {
+          this._tmpCanvas.width = scaledW;
+          this._tmpCanvas.height = scaledH;
+        }
+
+        // Clear then draw current video frame scaled
+        try {
+          this._tmpCtx.save();
+          this._tmpCtx.clearRect(0, 0, scaledW, scaledH);
+
+          const style = window.getComputedStyle(vid);
+          const scaledRadii = {
+            tl: parseFloat(style.borderTopLeftRadius) * this.scaleFactor,
+            tr: parseFloat(style.borderTopRightRadius) * this.scaleFactor,
+            br: parseFloat(style.borderBottomRightRadius) * this.scaleFactor,
+            bl: parseFloat(style.borderBottomLeftRadius) * this.scaleFactor,
+          };
+          const hasRadius = Object.values(scaledRadii).some((r) => r > 0);
+
+          if (hasRadius) {
+            this._createRoundedRectPath(
+              this._tmpCtx,
+              scaledW,
+              scaledH,
+              scaledRadii
+            );
+            this._tmpCtx.fill();
+            this._tmpCtx.globalCompositeOperation = "source-in";
+          }
+
+          // flip vertically so double-flip yields upright image
+          this._tmpCtx.translate(0, scaledH);
+          this._tmpCtx.scale(1, -1);
+          this._tmpCtx.drawImage(vid, 0, 0, scaledW, scaledH);
+          this._tmpCtx.restore();
+        } catch (e) {
+          return; // cross-origin or not ready
+        }
+
+        gl.bindTexture(gl.TEXTURE_2D, this.texture);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
+        const xOffset = Math.round(docX * this.scaleFactor);
+        const yOffset = Math.round(docY * this.scaleFactor);
+
+        if (
+          xOffset < 0 ||
+          yOffset < 0 ||
+          xOffset + scaledW > this.textureWidth ||
+          yOffset + scaledH > this.textureHeight
+        )
+          return;
+
+        gl.texSubImage2D(
+          gl.TEXTURE_2D,
+          0,
+          xOffset,
+          yOffset,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          this._tmpCanvas
+        );
+      });
     }
   }
 
@@ -809,12 +930,8 @@
     _TriggerInit() {
       if (this._initCalled) return;
       this._initCalled = true;
-      if (this.options.on && typeof this.options.on.init === "function") {
-        try {
-          this.options.on.init(this);
-        } catch (err) {
-          console.error("LiquidGL on.init callback error", err);
-        }
+      if (this.options.on && this.options.on.init) {
+        this.options.on.init(this);
       }
     }
   }
