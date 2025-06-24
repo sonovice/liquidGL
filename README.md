@@ -5,7 +5,7 @@
 `BETA Release`
 
 > [!IMPORTANT]
-> liquidGL-experimental.js and related demo are works in progress, as we try to figure out real time refraction of video and content animations. DO NOT USE THE EXPERIMENTAL VERSION YET.
+> The liquidGL-experimental.js version and related demo are WIP, as we try to figure out real time refraction of video/content animations. DO NOT USE THE EXPERIMENTAL VERSION YET.
 
 liquidGL turns any fixed-position element into a perfectly refracted, glossy "glass pane" rendered in WebGL.
 
