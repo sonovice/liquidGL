@@ -317,6 +317,7 @@
     /* ----------------------------- */
     _uploadTexture(srcCanvas) {
       if (!srcCanvas) return;
+      this.staticSnapshotCanvas = srcCanvas;
       const gl = this.gl;
       if (!this.texture) this.texture = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, this.texture);
@@ -482,38 +483,47 @@
 
     /* ----------------------------- */
     _updateDynamicVideos() {
-      if (!this.texture || !this._videoNodes.length) return;
+      if (
+        !this.texture ||
+        !this.staticSnapshotCanvas ||
+        !this._videoNodes.length
+      )
+        return;
       const gl = this.gl;
 
       const snapRect = this.snapshotTarget.getBoundingClientRect();
 
       this._videoNodes.forEach((vid) => {
-        if (vid.readyState < 2) return; // not enough data
+        if (vid.readyState < 2) return;
         const rect = vid.getBoundingClientRect();
 
-        // Dimensions in CSS px relative to snapshotTarget origin
-        const docX = rect.left - snapRect.left;
-        const docY = rect.top - snapRect.top;
+        const texX = (rect.left - snapRect.left) * this.scaleFactor;
+        const texY = (rect.top - snapRect.top) * this.scaleFactor;
+        const texW = rect.width * this.scaleFactor;
+        const texH = rect.height * this.scaleFactor;
 
-        const scaledW = Math.round(rect.width * this.scaleFactor);
-        const scaledH = Math.round(rect.height * this.scaleFactor);
+        if (texW === 0 || texH === 0) return;
 
-        if (scaledW === 0 || scaledH === 0) return;
-
-        // Prepare temp canvas
-        if (
-          this._tmpCanvas.width !== scaledW ||
-          this._tmpCanvas.height !== scaledH
-        ) {
-          this._tmpCanvas.width = scaledW;
-          this._tmpCanvas.height = scaledH;
+        if (this._tmpCanvas.width !== texW || this._tmpCanvas.height !== texH) {
+          this._tmpCanvas.width = texW;
+          this._tmpCanvas.height = texH;
         }
 
-        // Clear then draw current video frame scaled
         try {
-          this._tmpCtx.save();
-          this._tmpCtx.clearRect(0, 0, scaledW, scaledH);
+          // Heal with the static background first
+          this._tmpCtx.drawImage(
+            this.staticSnapshotCanvas,
+            texX,
+            texY,
+            texW,
+            texH,
+            0,
+            0,
+            texW,
+            texH
+          );
 
+          this._tmpCtx.save();
           const style = window.getComputedStyle(vid);
           const scaledRadii = {
             tl: parseFloat(style.borderTopLeftRadius) * this.scaleFactor,
@@ -521,47 +531,25 @@
             br: parseFloat(style.borderBottomRightRadius) * this.scaleFactor,
             bl: parseFloat(style.borderBottomLeftRadius) * this.scaleFactor,
           };
-          const hasRadius = Object.values(scaledRadii).some((r) => r > 0);
-
-          if (hasRadius) {
-            this._createRoundedRectPath(
-              this._tmpCtx,
-              scaledW,
-              scaledH,
-              scaledRadii
-            );
-            this._tmpCtx.fill();
-            this._tmpCtx.globalCompositeOperation = "source-in";
+          if (Object.values(scaledRadii).some((r) => r > 0)) {
+            this._createRoundedRectPath(this._tmpCtx, texW, texH, scaledRadii);
+            this._tmpCtx.clip();
           }
 
-          // flip vertically so double-flip yields upright image
-          this._tmpCtx.translate(0, scaledH);
-          this._tmpCtx.scale(1, -1);
-          this._tmpCtx.drawImage(vid, 0, 0, scaledW, scaledH);
+          // Composite the video frame on top
+          this._tmpCtx.drawImage(vid, 0, 0, texW, texH);
           this._tmpCtx.restore();
         } catch (e) {
-          return; // cross-origin or not ready
+          return;
         }
 
         gl.bindTexture(gl.TEXTURE_2D, this.texture);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-
-        const xOffset = Math.round(docX * this.scaleFactor);
-        const yOffset = Math.round(docY * this.scaleFactor);
-
-        if (
-          xOffset < 0 ||
-          yOffset < 0 ||
-          xOffset + scaledW > this.textureWidth ||
-          yOffset + scaledH > this.textureHeight
-        )
-          return;
-
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
         gl.texSubImage2D(
           gl.TEXTURE_2D,
           0,
-          xOffset,
-          yOffset,
+          Math.round(texX),
+          Math.round(texY),
           gl.RGBA,
           gl.UNSIGNED_BYTE,
           this._tmpCanvas
@@ -571,7 +559,12 @@
 
     /* ----------------------------- */
     _updateDynamicNodes() {
-      if (!this.texture || !this._dynamicNodes.length) return;
+      if (
+        !this.texture ||
+        !this.staticSnapshotCanvas ||
+        !this._dynamicNodes.length
+      )
+        return;
 
       const now = performance.now();
       const CAPTURE_INTERVAL = 16;
@@ -581,55 +574,47 @@
       const gl = this.gl;
       const snapRect = this.snapshotTarget.getBoundingClientRect();
 
-      const nodesToUpdate = this._dynamicNodes.filter((node) => {
-        if (node._capturing) return false;
+      this._dynamicNodes.forEach((node) => {
+        if (node._capturing) return;
 
         const el = node.el;
-        if (!document.contains(el)) {
-          // TODO: cleanup logic
-          return false;
-        }
+        if (!document.contains(el)) return;
 
         const rect = el.getBoundingClientRect();
-        const rectWidthCss = Math.round(rect.width);
-        const rectHeightCss = Math.round(rect.height);
 
-        if (rectWidthCss === 0 || rectHeightCss === 0) {
-          node.prevRect = null;
-          node.prevCssRect = null;
-          return false;
-        }
+        const texX = (rect.left - snapRect.left) * this.scaleFactor;
+        const texY = (rect.top - snapRect.top) * this.scaleFactor;
+        const texW = rect.width * this.scaleFactor;
+        const texH = rect.height * this.scaleFactor;
 
-        const rectLeftCss = Math.round(rect.left - snapRect.left);
-        const rectTopCss = Math.round(rect.top - snapRect.top);
+        const drawX = Math.round(texX);
+        const drawY = Math.round(texY);
+        const drawW = Math.round(texW);
+        const drawH = Math.round(texH);
 
         if (
-          node.prevCssRect &&
-          node.prevCssRect.left === rectLeftCss &&
-          node.prevCssRect.top === rectTopCss &&
-          node.prevCssRect.width === rectWidthCss &&
-          node.prevCssRect.height === rectHeightCss
+          node.prevDrawRect &&
+          node.prevDrawRect.x === drawX &&
+          node.prevDrawRect.y === drawY &&
+          node.prevDrawRect.w === drawW &&
+          node.prevDrawRect.h === drawH
         ) {
-          return false;
+          return;
         }
 
-        node.newCssRect = {
-          left: rectLeftCss,
-          top: rectTopCss,
-          width: rectWidthCss,
-          height: rectHeightCss,
-        };
-        return true;
-      });
+        if (rect.width === 0 || rect.height === 0) {
+          // TODO: Clear previous rect if element disappears
+          node.prevRect = null;
+          node.prevDrawRect = null;
+          return;
+        }
 
-      if (nodesToUpdate.length === 0) return;
-
-      const capturePromises = nodesToUpdate.map((node) => {
         node._capturing = true;
-        return html2canvas(node.el, {
+
+        html2canvas(el, {
           backgroundColor: null,
-          width: node.newCssRect.width,
-          height: node.newCssRect.height,
+          width: rect.width,
+          height: rect.height,
           scale: this.scaleFactor,
           useCORS: true,
           removeContainer: true,
@@ -638,102 +623,55 @@
           logging: false,
           ignoreElements: (n) =>
             n.tagName === "CANVAS" || n.hasAttribute("data-liquid-ignore"),
-        }).then((canvas) => ({ canvas, node }));
-      });
+        })
+          .then((cv) => {
+            if (!this.texture || !this.staticSnapshotCanvas) return;
 
-      Promise.all(capturePromises)
-        .then((results) => {
-          if (!this.texture) return;
-
-          // Batch 1: Clear all dirty regions
-          const clearRects = results.map(({ node }) => {
-            const scaledW = node.newCssRect.width * this.scaleFactor;
-            const scaledH = node.newCssRect.height * this.scaleFactor;
-            const texX = node.newCssRect.left * this.scaleFactor;
-            const texY = node.newCssRect.top * this.scaleFactor;
-
-            let clearX = texX,
-              clearY = texY,
-              clearW = scaledW,
-              clearH = scaledH;
-            if (node.prevRect) {
-              const pr = node.prevRect;
-              clearX = Math.min(pr.x, texX);
-              clearY = Math.min(pr.y, texY);
-              clearW = Math.max(pr.x + pr.w, texX + scaledW) - clearX;
-              clearH = Math.max(pr.y + pr.h, texY + scaledH) - clearY;
+            if (!this._compositeCtx) {
+              this._compositeCtx = document
+                .createElement("canvas")
+                .getContext("2d");
             }
-            const pad = 1 * this.scaleFactor;
-            return {
-              x: Math.floor(Math.max(0, clearX - pad)),
-              y: Math.floor(Math.max(0, clearY - pad)),
-              w: Math.ceil(
-                Math.min(this.textureWidth - clearX, clearW + pad * 2)
-              ),
-              h: Math.ceil(
-                Math.min(this.textureHeight - clearY, clearH + pad * 2)
-              ),
-            };
-          });
+            const compositeCanvas = this._compositeCtx.canvas;
 
-          if (!this._blankCanvas)
-            this._blankCanvas = document.createElement("canvas");
-          gl.bindTexture(gl.TEXTURE_2D, this.texture);
-          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+            compositeCanvas.width = drawW;
+            compositeCanvas.height = drawH;
 
-          clearRects.forEach((r) => {
-            if (r.w > 0 && r.h > 0) {
-              if (
-                this._blankCanvas.width !== r.w ||
-                this._blankCanvas.height !== r.h
-              ) {
-                this._blankCanvas.width = r.w;
-                this._blankCanvas.height = r.h;
-              }
-              gl.texSubImage2D(
-                gl.TEXTURE_2D,
-                0,
-                r.x,
-                r.y,
-                gl.RGBA,
-                gl.UNSIGNED_BYTE,
-                this._blankCanvas
-              );
-            }
-          });
+            // Heal with the static background
+            this._compositeCtx.drawImage(
+              this.staticSnapshotCanvas,
+              texX,
+              texY,
+              texW,
+              texH,
+              0,
+              0,
+              drawW,
+              drawH
+            );
 
-          // Batch 2: Draw all new captures
-          results.forEach(({ canvas, node }) => {
-            const texX = node.newCssRect.left * this.scaleFactor;
-            const texY = node.newCssRect.top * this.scaleFactor;
+            // Composite the dynamic element on top
+            this._compositeCtx.drawImage(cv, 0, 0, drawW, drawH);
 
+            gl.bindTexture(gl.TEXTURE_2D, this.texture);
+            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
             gl.texSubImage2D(
               gl.TEXTURE_2D,
               0,
-              Math.floor(texX),
-              Math.floor(texY),
+              drawX,
+              drawY,
               gl.RGBA,
               gl.UNSIGNED_BYTE,
-              canvas
+              compositeCanvas
             );
 
-            node.prevRect = {
-              x: texX,
-              y: texY,
-              w: node.newCssRect.width * this.scaleFactor,
-              h: node.newCssRect.height * this.scaleFactor,
-            };
-            node.prevCssRect = node.newCssRect;
-            node.newCssRect = null;
+            node.prevRect = { x: texX, y: texY, w: texW, h: texH };
+            node.prevDrawRect = { x: drawX, y: drawY, w: drawW, h: drawH };
+          })
+          .finally(() => {
             node._capturing = false;
           });
-        })
-        .catch(() => {
-          nodesToUpdate.forEach((node) => {
-            node._capturing = false;
-            node.newCssRect = null;
-          });
-        });
+      });
     }
 
     /* ----------------------------- */
@@ -766,7 +704,7 @@
         el,
         _capturing: false,
         prevRect: null,
-        prevCssRect: null,
+        prevDrawRect: null,
       });
     }
   }
