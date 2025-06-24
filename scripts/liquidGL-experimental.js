@@ -576,7 +576,7 @@
       if (!this.texture || !this._dynamicNodes.length) return;
 
       const now = performance.now();
-      const CAPTURE_INTERVAL = 66; // ≈15 fps cap for dynamic updates – lighter
+      const CAPTURE_INTERVAL = 16; // ≈60 fps for smoother dynamic updates
       if (now - this._lastDynamicUpdate < CAPTURE_INTERVAL) return;
       this._lastDynamicUpdate = now;
 
@@ -613,6 +613,46 @@
 
         node._capturing = true;
 
+        // Clear union of previous and current rects to avoid leftover pixels
+        if (!this._blankCanvas) {
+          this._blankCanvas = document.createElement("canvas");
+          this._blankCtx = this._blankCanvas.getContext("2d");
+        }
+
+        let clearX = texX,
+          clearY = texY,
+          clearW = scaledW,
+          clearH = scaledH;
+
+        if (node.prevRect) {
+          const pr = node.prevRect;
+          clearX = Math.min(pr.x, texX);
+          clearY = Math.min(pr.y, texY);
+          clearW = Math.max(pr.x + pr.w, texX + scaledW) - clearX;
+          clearH = Math.max(pr.y + pr.h, texY + scaledH) - clearY;
+        }
+
+        if (
+          this._blankCanvas.width !== clearW ||
+          this._blankCanvas.height !== clearH
+        ) {
+          this._blankCanvas.width = clearW;
+          this._blankCanvas.height = clearH;
+          this._blankCtx.clearRect(0, 0, clearW, clearH);
+        }
+
+        gl.bindTexture(gl.TEXTURE_2D, this.texture);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+        gl.texSubImage2D(
+          gl.TEXTURE_2D,
+          0,
+          clearX,
+          clearY,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          this._blankCanvas
+        );
+
         html2canvas(el, {
           backgroundColor: null,
           width: rect.width,
@@ -638,6 +678,8 @@
               gl.UNSIGNED_BYTE,
               cv
             );
+
+            node.prevRect = { x: texX, y: texY, w: scaledW, h: scaledH };
           })
           .catch(() => {})
           .finally(() => {
@@ -664,8 +706,18 @@
         return;
       }
       if (!el.getBoundingClientRect) return;
+
+      // Ignore if identical node already registered
       if (this._dynamicNodes.some((n) => n.el === el)) return;
-      this._dynamicNodes.push({ el, _capturing: false });
+
+      // If this element is ancestor of an existing node, replace that node (prefer higher-level container)
+      this._dynamicNodes = this._dynamicNodes.filter((n) => !el.contains(n.el));
+
+      // If this element is descendant of an existing node, skip adding to avoid overlap
+      const isDescendant = this._dynamicNodes.some((n) => n.el.contains(el));
+      if (isDescendant) return;
+
+      this._dynamicNodes.push({ el, _capturing: false, prevRect: null });
     }
   }
 
