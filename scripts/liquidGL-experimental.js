@@ -275,7 +275,6 @@
         const fullH = this.snapshotTarget.scrollHeight;
         const maxTex = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) || 8192;
         let scale = Math.min(1, maxTex / fullW, maxTex / fullH);
-        if (scale > 0.5) scale = 0.5;
         this.scaleFactor = scale;
 
         const isXOrigin = (src) => {
@@ -572,91 +571,65 @@
 
     /* ----------------------------- */
     _updateDynamicNodes() {
-      // Throttled real-time updates for arbitrary DOM elements marked as dynamic.
       if (!this.texture || !this._dynamicNodes.length) return;
 
       const now = performance.now();
-      const CAPTURE_INTERVAL = 16; // ≈60 fps for smoother dynamic updates
+      const CAPTURE_INTERVAL = 16;
       if (now - this._lastDynamicUpdate < CAPTURE_INTERVAL) return;
       this._lastDynamicUpdate = now;
 
       const gl = this.gl;
       const snapRect = this.snapshotTarget.getBoundingClientRect();
 
-      // Only process one element per interval to keep load predictable
-      for (let i = 0; i < this._dynamicNodes.length; i++) {
-        const node = this._dynamicNodes[i];
-        if (node._capturing) continue;
+      const nodesToUpdate = this._dynamicNodes.filter((node) => {
+        if (node._capturing) return false;
+
         const el = node.el;
-        if (!document.contains(el)) continue;
+        if (!document.contains(el)) {
+          // TODO: cleanup logic
+          return false;
+        }
 
         const rect = el.getBoundingClientRect();
-        if (rect.width === 0 || rect.height === 0) continue;
+        const rectWidthCss = Math.round(rect.width);
+        const rectHeightCss = Math.round(rect.height);
 
-        // Snap origin to whole CSS pixels to keep texel alignment stable
+        if (rectWidthCss === 0 || rectHeightCss === 0) {
+          node.prevRect = null;
+          node.prevCssRect = null;
+          return false;
+        }
+
         const rectLeftCss = Math.round(rect.left - snapRect.left);
         const rectTopCss = Math.round(rect.top - snapRect.top);
 
-        const scaledW = Math.round(rect.width * this.scaleFactor);
-        const scaledH = Math.round(rect.height * this.scaleFactor);
-        if (scaledW === 0 || scaledH === 0) continue;
+        if (
+          node.prevCssRect &&
+          node.prevCssRect.left === rectLeftCss &&
+          node.prevCssRect.top === rectTopCss &&
+          node.prevCssRect.width === rectWidthCss &&
+          node.prevCssRect.height === rectHeightCss
+        ) {
+          return false;
+        }
 
-        const texX = rectLeftCss * this.scaleFactor;
-        const texY = rectTopCss * this.scaleFactor;
+        node.newCssRect = {
+          left: rectLeftCss,
+          top: rectTopCss,
+          width: rectWidthCss,
+          height: rectHeightCss,
+        };
+        return true;
+      });
 
+      if (nodesToUpdate.length === 0) return;
+
+      const capturePromises = nodesToUpdate.map((node) => {
         node._capturing = true;
-
-        // Calculate the union of the previous and current rectangles to define the clear area.
-        let clearX = texX,
-          clearY = texY,
-          clearW = scaledW,
-          clearH = scaledH;
-        if (node.prevRect) {
-          const pr = node.prevRect;
-          clearX = Math.min(pr.x, texX);
-          clearY = Math.min(pr.y, texY);
-          clearW = Math.max(pr.x + pr.w, texX + scaledW) - clearX;
-          clearH = Math.max(pr.y + pr.h, texY + scaledH) - clearY;
-        }
-
-        // Pad by 1px on all sides to ensure antialiased edges are wiped clean.
-        const pad = 1 * this.scaleFactor;
-        clearX = Math.max(0, clearX - pad);
-        clearY = Math.max(0, clearY - pad);
-        clearW = Math.min(this.textureWidth - clearX, clearW + pad * 2);
-        clearH = Math.min(this.textureHeight - clearY, clearH + pad * 2);
-
-        // Use a blank canvas to clear the region on the main texture.
-        if (!this._blankCanvas) {
-          this._blankCanvas = document.createElement("canvas");
-        }
-
-        if (clearW > 0 && clearH > 0) {
-          if (
-            this._blankCanvas.width !== clearW ||
-            this._blankCanvas.height !== clearH
-          ) {
-            this._blankCanvas.width = clearW;
-            this._blankCanvas.height = clearH;
-          }
-
-          gl.bindTexture(gl.TEXTURE_2D, this.texture);
-          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); // html2canvas is not flipped
-          gl.texSubImage2D(
-            gl.TEXTURE_2D,
-            0,
-            Math.floor(clearX),
-            Math.floor(clearY),
-            gl.RGBA,
-            gl.UNSIGNED_BYTE,
-            this._blankCanvas
-          );
-        }
-
-        html2canvas(el, {
+        return html2canvas(node.el, {
           backgroundColor: null,
-          width: rect.width,
-          height: rect.height,
+          width: node.newCssRect.width,
+          height: node.newCssRect.height,
           scale: this.scaleFactor,
           useCORS: true,
           removeContainer: true,
@@ -665,11 +638,75 @@
           logging: false,
           ignoreElements: (n) =>
             n.tagName === "CANVAS" || n.hasAttribute("data-liquid-ignore"),
-        })
-          .then((cv) => {
-            // Now draw the newly captured element state onto the texture.
-            gl.bindTexture(gl.TEXTURE_2D, this.texture);
-            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+        }).then((canvas) => ({ canvas, node }));
+      });
+
+      Promise.all(capturePromises)
+        .then((results) => {
+          if (!this.texture) return;
+
+          // Batch 1: Clear all dirty regions
+          const clearRects = results.map(({ node }) => {
+            const scaledW = node.newCssRect.width * this.scaleFactor;
+            const scaledH = node.newCssRect.height * this.scaleFactor;
+            const texX = node.newCssRect.left * this.scaleFactor;
+            const texY = node.newCssRect.top * this.scaleFactor;
+
+            let clearX = texX,
+              clearY = texY,
+              clearW = scaledW,
+              clearH = scaledH;
+            if (node.prevRect) {
+              const pr = node.prevRect;
+              clearX = Math.min(pr.x, texX);
+              clearY = Math.min(pr.y, texY);
+              clearW = Math.max(pr.x + pr.w, texX + scaledW) - clearX;
+              clearH = Math.max(pr.y + pr.h, texY + scaledH) - clearY;
+            }
+            const pad = 1 * this.scaleFactor;
+            return {
+              x: Math.floor(Math.max(0, clearX - pad)),
+              y: Math.floor(Math.max(0, clearY - pad)),
+              w: Math.ceil(
+                Math.min(this.textureWidth - clearX, clearW + pad * 2)
+              ),
+              h: Math.ceil(
+                Math.min(this.textureHeight - clearY, clearH + pad * 2)
+              ),
+            };
+          });
+
+          if (!this._blankCanvas)
+            this._blankCanvas = document.createElement("canvas");
+          gl.bindTexture(gl.TEXTURE_2D, this.texture);
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+
+          clearRects.forEach((r) => {
+            if (r.w > 0 && r.h > 0) {
+              if (
+                this._blankCanvas.width !== r.w ||
+                this._blankCanvas.height !== r.h
+              ) {
+                this._blankCanvas.width = r.w;
+                this._blankCanvas.height = r.h;
+              }
+              gl.texSubImage2D(
+                gl.TEXTURE_2D,
+                0,
+                r.x,
+                r.y,
+                gl.RGBA,
+                gl.UNSIGNED_BYTE,
+                this._blankCanvas
+              );
+            }
+          });
+
+          // Batch 2: Draw all new captures
+          results.forEach(({ canvas, node }) => {
+            const texX = node.newCssRect.left * this.scaleFactor;
+            const texY = node.newCssRect.top * this.scaleFactor;
+
             gl.texSubImage2D(
               gl.TEXTURE_2D,
               0,
@@ -677,20 +714,26 @@
               Math.floor(texY),
               gl.RGBA,
               gl.UNSIGNED_BYTE,
-              cv
+              canvas
             );
 
-            // Store the current rectangle as the previous one for the next frame.
-            node.prevRect = { x: texX, y: texY, w: scaledW, h: scaledH };
-          })
-          .catch(() => {})
-          .finally(() => {
+            node.prevRect = {
+              x: texX,
+              y: texY,
+              w: node.newCssRect.width * this.scaleFactor,
+              h: node.newCssRect.height * this.scaleFactor,
+            };
+            node.prevCssRect = node.newCssRect;
+            node.newCssRect = null;
             node._capturing = false;
           });
-
-        // Process at most one element per frame
-        break;
-      }
+        })
+        .catch(() => {
+          nodesToUpdate.forEach((node) => {
+            node._capturing = false;
+            node.newCssRect = null;
+          });
+        });
     }
 
     /* ----------------------------- */
@@ -719,7 +762,12 @@
       const isDescendant = this._dynamicNodes.some((n) => n.el.contains(el));
       if (isDescendant) return;
 
-      this._dynamicNodes.push({ el, _capturing: false, prevRect: null });
+      this._dynamicNodes.push({
+        el,
+        _capturing: false,
+        prevRect: null,
+        prevCssRect: null,
+      });
     }
   }
 
