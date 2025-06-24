@@ -44,11 +44,10 @@ Set up your HTML structure first. You will have a fixed parent element to wrap e
 <body>
   <!-- A container to position your glass element above the body -->
   <div class="fixed-container">
-    <!-- Fixed wrapper -->
+    <!-- Target (glassified) -->
     <div class="selector">
-      <!-- Target (glassified) -->
+      <!-- Content -->
       <div class="content">
-        <!-- Content -->
         <img src="/example.svg" alt="Alt Text" />
         <p>This example text content will appear on top of the glass.</p>
       </div>
