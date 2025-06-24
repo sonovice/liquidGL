@@ -606,44 +606,52 @@
 
         node._capturing = true;
 
-        // Clear union of previous and current rects to avoid leftover pixels
-        if (!this._blankCanvas) {
-          this._blankCanvas = document.createElement("canvas");
-          this._blankCtx = this._blankCanvas.getContext("2d");
-        }
-
+        // Calculate the union of the previous and current rectangles to define the clear area.
         let clearX = texX,
           clearY = texY,
           clearW = scaledW,
           clearH = scaledH;
+        if (node.prevRect) {
+          const pr = node.prevRect;
+          clearX = Math.min(pr.x, texX);
+          clearY = Math.min(pr.y, texY);
+          clearW = Math.max(pr.x + pr.w, texX + scaledW) - clearX;
+          clearH = Math.max(pr.y + pr.h, texY + scaledH) - clearY;
+        }
 
-        // Pad by 1px on all sides to ensure antialiased edges are wiped
+        // Pad by 1px on all sides to ensure antialiased edges are wiped clean.
         const pad = 1 * this.scaleFactor;
         clearX = Math.max(0, clearX - pad);
         clearY = Math.max(0, clearY - pad);
         clearW = Math.min(this.textureWidth - clearX, clearW + pad * 2);
         clearH = Math.min(this.textureHeight - clearY, clearH + pad * 2);
 
-        if (
-          this._blankCanvas.width !== clearW ||
-          this._blankCanvas.height !== clearH
-        ) {
-          this._blankCanvas.width = clearW;
-          this._blankCanvas.height = clearH;
-          this._blankCtx.clearRect(0, 0, clearW, clearH);
+        // Use a blank canvas to clear the region on the main texture.
+        if (!this._blankCanvas) {
+          this._blankCanvas = document.createElement("canvas");
         }
 
-        gl.bindTexture(gl.TEXTURE_2D, this.texture);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-        gl.texSubImage2D(
-          gl.TEXTURE_2D,
-          0,
-          clearX,
-          clearY,
-          gl.RGBA,
-          gl.UNSIGNED_BYTE,
-          this._blankCanvas
-        );
+        if (clearW > 0 && clearH > 0) {
+          if (
+            this._blankCanvas.width !== clearW ||
+            this._blankCanvas.height !== clearH
+          ) {
+            this._blankCanvas.width = clearW;
+            this._blankCanvas.height = clearH;
+          }
+
+          gl.bindTexture(gl.TEXTURE_2D, this.texture);
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); // html2canvas is not flipped
+          gl.texSubImage2D(
+            gl.TEXTURE_2D,
+            0,
+            Math.floor(clearX),
+            Math.floor(clearY),
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            this._blankCanvas
+          );
+        }
 
         html2canvas(el, {
           backgroundColor: null,
@@ -659,33 +667,20 @@
             n.tagName === "CANVAS" || n.hasAttribute("data-liquid-ignore"),
         })
           .then((cv) => {
-            // Compute union of current and previous rect to fully clear
-            let uX = texX,
-              uY = texY,
-              uW = cv.width,
-              uH = cv.height;
-            if (node.prevRect) {
-              const pr = node.prevRect;
-              uX = Math.min(pr.x, texX);
-              uY = Math.min(pr.y, texY);
-              uW = Math.max(pr.x + pr.w, texX + cv.width) - uX;
-              uH = Math.max(pr.y + pr.h, texY + cv.height) - uY;
-            }
-
-            const pad = this.scaleFactor; // 1px pad
-            uX = Math.max(0, uX - pad);
+            // Now draw the newly captured element state onto the texture.
             gl.bindTexture(gl.TEXTURE_2D, this.texture);
             gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
             gl.texSubImage2D(
               gl.TEXTURE_2D,
               0,
-              texX,
-              texY,
+              Math.floor(texX),
+              Math.floor(texY),
               gl.RGBA,
               gl.UNSIGNED_BYTE,
               cv
             );
 
+            // Store the current rectangle as the previous one for the next frame.
             node.prevRect = { x: texX, y: texY, w: scaledW, h: scaledH };
           })
           .catch(() => {})
