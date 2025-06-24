@@ -510,6 +510,20 @@
         }
 
         try {
+          this._tmpCtx.save();
+
+          const style = window.getComputedStyle(vid);
+          const scaledRadii = {
+            tl: parseFloat(style.borderTopLeftRadius) * this.scaleFactor,
+            tr: parseFloat(style.borderTopRightRadius) * this.scaleFactor,
+            br: parseFloat(style.borderBottomRightRadius) * this.scaleFactor,
+            bl: parseFloat(style.borderBottomLeftRadius) * this.scaleFactor,
+          };
+          if (Object.values(scaledRadii).some((r) => r > 0)) {
+            this._createRoundedRectPath(this._tmpCtx, texW, texH, scaledRadii);
+            this._tmpCtx.clip();
+          }
+
           // Heal with the static background first
           this._tmpCtx.drawImage(
             this.staticSnapshotCanvas,
@@ -522,19 +536,6 @@
             texW,
             texH
           );
-
-          this._tmpCtx.save();
-          const style = window.getComputedStyle(vid);
-          const scaledRadii = {
-            tl: parseFloat(style.borderTopLeftRadius) * this.scaleFactor,
-            tr: parseFloat(style.borderTopRightRadius) * this.scaleFactor,
-            br: parseFloat(style.borderBottomRightRadius) * this.scaleFactor,
-            bl: parseFloat(style.borderBottomLeftRadius) * this.scaleFactor,
-          };
-          if (Object.values(scaledRadii).some((r) => r > 0)) {
-            this._createRoundedRectPath(this._tmpCtx, texW, texH, scaledRadii);
-            this._tmpCtx.clip();
-          }
 
           // Composite the video frame on top
           this._tmpCtx.drawImage(vid, 0, 0, texW, texH);
