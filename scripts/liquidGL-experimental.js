@@ -275,6 +275,8 @@
         const fullH = this.snapshotTarget.scrollHeight;
         const maxTex = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) || 8192;
         let scale = Math.min(1, maxTex / fullW, maxTex / fullH);
+        // Match the behaviour of the stable build – overly large textures can cause artefacts
+        if (scale > 0.5) scale = 0.5;
         this.scaleFactor = scale;
 
         const isXOrigin = (src) => {
