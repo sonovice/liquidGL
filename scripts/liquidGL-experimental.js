@@ -55,9 +55,9 @@
    * ------------------------------------------------*/
   class LiquidGLRenderer {
     constructor(snapshotSelector) {
-      // Canvas that hosts the single WebGL context
       this.canvas = document.createElement("canvas");
       this.canvas.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:2;`;
+      this.canvas.setAttribute("data-liquid-ignore", "");
       document.body.appendChild(this.canvas);
 
       const ctxAttribs = { alpha: true, premultipliedAlpha: true };
@@ -110,6 +110,12 @@
       this._tmpCtx = this._tmpCanvas.getContext("2d");
 
       this.canvas.style.opacity = "0";
+
+      /* --------------------------------------------------
+       *  Dynamic DOM elements (non-video, e.g. animating text)
+       * ------------------------------------------------*/
+      this._dynamicNodes = [];
+      this._lastDynamicUpdate = 0;
     }
 
     /* ----------------------------- */
@@ -370,6 +376,9 @@
       // Update dynamic video regions before sampling
       this._updateDynamicVideos();
 
+      // Update other dynamic DOM nodes (e.g. animated text)
+      this._updateDynamicNodes();
+
       this.lenses.forEach((lens) => {
         lens.updateMetrics();
         if (lens._mirrorActive && lens._mirrorClipUpdater) {
@@ -559,6 +568,104 @@
           this._tmpCanvas
         );
       });
+    }
+
+    /* ----------------------------- */
+    _updateDynamicNodes() {
+      // Throttled real-time updates for arbitrary DOM elements marked as dynamic.
+      if (!this.texture || !this._dynamicNodes.length) return;
+
+      const now = performance.now();
+      const CAPTURE_INTERVAL = 66; // ≈15 fps cap for dynamic updates – lighter
+      if (now - this._lastDynamicUpdate < CAPTURE_INTERVAL) return;
+      this._lastDynamicUpdate = now;
+
+      const gl = this.gl;
+      const snapRect = this.snapshotTarget.getBoundingClientRect();
+
+      // Only process one element per interval to keep load predictable
+      for (let i = 0; i < this._dynamicNodes.length; i++) {
+        const node = this._dynamicNodes[i];
+        if (node._capturing) continue;
+        const el = node.el;
+        if (!document.contains(el)) continue;
+
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) continue;
+
+        const scaledW = Math.round(rect.width * this.scaleFactor);
+        const scaledH = Math.round(rect.height * this.scaleFactor);
+        if (scaledW === 0 || scaledH === 0) continue;
+
+        const docX = rect.left - snapRect.left;
+        const docY = rect.top - snapRect.top;
+        const texX = Math.round(docX * this.scaleFactor);
+        const texY = Math.round(docY * this.scaleFactor);
+
+        // Bounds check – skip if completely outside texture
+        if (
+          texX < 0 ||
+          texY < 0 ||
+          texX + scaledW > this.textureWidth ||
+          texY + scaledH > this.textureHeight
+        )
+          continue;
+
+        node._capturing = true;
+
+        html2canvas(el, {
+          backgroundColor: null,
+          width: rect.width,
+          height: rect.height,
+          scale: this.scaleFactor,
+          useCORS: true,
+          removeContainer: true,
+          scrollX: 0,
+          scrollY: 0,
+          logging: false,
+          ignoreElements: (n) =>
+            n.tagName === "CANVAS" || n.hasAttribute("data-liquid-ignore"),
+        })
+          .then((cv) => {
+            gl.bindTexture(gl.TEXTURE_2D, this.texture);
+            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+            gl.texSubImage2D(
+              gl.TEXTURE_2D,
+              0,
+              texX,
+              texY,
+              gl.RGBA,
+              gl.UNSIGNED_BYTE,
+              cv
+            );
+          })
+          .catch(() => {})
+          .finally(() => {
+            node._capturing = false;
+          });
+
+        // Process at most one element per frame
+        break;
+      }
+    }
+
+    /* ----------------------------- */
+    addDynamicElement(el) {
+      // Accept selector string, single element, or list/array
+      if (!el) return;
+      if (typeof el === "string") {
+        this.snapshotTarget
+          .querySelectorAll(el)
+          .forEach((n) => this.addDynamicElement(n));
+        return;
+      }
+      if (NodeList.prototype.isPrototypeOf(el) || Array.isArray(el)) {
+        Array.from(el).forEach((n) => this.addDynamicElement(n));
+        return;
+      }
+      if (!el.getBoundingClientRect) return;
+      if (this._dynamicNodes.some((n) => n.el === el)) return;
+      this._dynamicNodes.push({ el, _capturing: false });
     }
   }
 
@@ -1004,5 +1111,14 @@
     }
 
     return instances.length === 1 ? instances[0] : instances;
+  };
+
+  /* --------------------------------------------------
+   *  Public helper: register elements that need live updates
+   * ------------------------------------------------*/
+  window.LiquidGL.registerDynamic = function (elements) {
+    const renderer = window.__LiquidGLRenderer__;
+    if (!renderer || !renderer.addDynamicElement) return;
+    renderer.addDynamicElement(elements);
   };
 })();
