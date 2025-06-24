@@ -584,7 +584,12 @@
       const getMeta = (el) => {
         let m = this._dynMeta.get(el);
         if (!m) {
-          m = { _capturing: false, prevDrawRect: null };
+          m = {
+            _capturing: false,
+            prevDrawRect: null,
+            initialCapture: null,
+            lastAnimationState: null,
+          };
           this._dynMeta.set(el, m);
         }
         return m;
@@ -603,16 +608,20 @@
         captureTargets.push({ el: n.el, meta: n });
       });
 
+      // Reuse canvas context
+      if (!this._compositeCtx) {
+        const canvas = document.createElement("canvas");
+        this._compositeCtx = canvas.getContext("2d", { alpha: true });
+      }
+
       // ---------------------------------------------
       // 2) Process each capture target
       // ---------------------------------------------
       captureTargets.forEach(({ el, meta }) => {
         if (meta._capturing) return;
-
         if (!document.contains(el)) return;
 
         const rect = el.getBoundingClientRect();
-
         const texX = (rect.left - snapRect.left) * this.scaleFactor;
         const texY = (rect.top - snapRect.top) * this.scaleFactor;
         const texW = rect.width * this.scaleFactor;
@@ -623,89 +632,154 @@
         const drawW = Math.round(texW);
         const drawH = Math.round(texH);
 
-        const needsHeal =
-          meta.prevDrawRect &&
-          (meta.prevDrawRect.x !== drawX ||
-            meta.prevDrawRect.y !== drawY ||
-            meta.prevDrawRect.w !== drawW ||
-            meta.prevDrawRect.h !== drawH);
+        // Get current animation state
+        const style = window.getComputedStyle(el);
+        const currentState = {
+          transform: style.transform,
+          opacity: style.opacity,
+          filter: style.filter,
+        };
 
-        // Skip if nothing changed for individual nodes (not for grouped parent)
-        if (
-          !needsHeal &&
-          meta.prevDrawRect &&
-          parentGroups.get(el) === undefined
-        ) {
-          return;
-        }
+        // Check if we need to do a full capture
+        const needsFullCapture =
+          !meta.initialCapture ||
+          meta.prevDrawRect?.w !== drawW ||
+          meta.prevDrawRect?.h !== drawH;
 
-        if (rect.width === 0 || rect.height === 0) {
-          meta.prevDrawRect = null;
-          return;
-        }
+        if (needsFullCapture) {
+          meta._capturing = true;
 
-        meta._capturing = true;
-
-        html2canvas(el, {
-          backgroundColor: null,
-          width: rect.width,
-          height: rect.height,
-          scale: this.scaleFactor,
-          useCORS: true,
-          removeContainer: true,
-          scrollX: 0,
-          scrollY: 0,
-          logging: false,
-          ignoreElements: (n) =>
-            n.tagName === "CANVAS" || n.hasAttribute("data-liquid-ignore"),
-        })
-          .then((cv) => {
-            if (!this.texture || !this.staticSnapshotCanvas) return;
-
-            if (!this._compositeCtx) {
-              this._compositeCtx = document
-                .createElement("canvas")
-                .getContext("2d");
-            }
-            const compositeCanvas = this._compositeCtx.canvas;
-
-            compositeCanvas.width = drawW;
-            compositeCanvas.height = drawH;
-
-            // Heal background
-            this._compositeCtx.drawImage(
-              this.staticSnapshotCanvas,
-              texX,
-              texY,
-              texW,
-              texH,
-              0,
-              0,
-              drawW,
-              drawH
-            );
-
-            // Draw fresh content
-            this._compositeCtx.drawImage(cv, 0, 0, drawW, drawH);
-
-            gl.bindTexture(gl.TEXTURE_2D, this.texture);
-            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-            gl.texSubImage2D(
-              gl.TEXTURE_2D,
-              0,
-              drawX,
-              drawY,
-              gl.RGBA,
-              gl.UNSIGNED_BYTE,
-              compositeCanvas
-            );
-
-            meta.prevDrawRect = { x: drawX, y: drawY, w: drawW, h: drawH };
+          // Do full html2canvas capture for initial or size-changed state
+          html2canvas(el, {
+            backgroundColor: null,
+            width: rect.width,
+            height: rect.height,
+            scale: this.scaleFactor,
+            useCORS: true,
+            removeContainer: true,
+            scrollX: 0,
+            scrollY: 0,
+            logging: false,
+            ignoreElements: (n) =>
+              n.tagName === "CANVAS" || n.hasAttribute("data-liquid-ignore"),
           })
-          .finally(() => {
-            meta._capturing = false;
-          });
+            .then((cv) => {
+              if (!this.texture || !this.staticSnapshotCanvas) return;
+
+              // Store initial capture
+              meta.initialCapture = cv;
+              meta.lastAnimationState = currentState;
+
+              // Render to texture
+              const compositeCanvas = this._compositeCtx.canvas;
+              compositeCanvas.width = drawW;
+              compositeCanvas.height = drawH;
+
+              this._compositeCtx.drawImage(
+                this.staticSnapshotCanvas,
+                texX,
+                texY,
+                texW,
+                texH,
+                0,
+                0,
+                drawW,
+                drawH
+              );
+
+              this._compositeCtx.drawImage(cv, 0, 0, drawW, drawH);
+
+              gl.bindTexture(gl.TEXTURE_2D, this.texture);
+              gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+              gl.texSubImage2D(
+                gl.TEXTURE_2D,
+                0,
+                drawX,
+                drawY,
+                gl.RGBA,
+                gl.UNSIGNED_BYTE,
+                compositeCanvas
+              );
+
+              meta.prevDrawRect = { x: drawX, y: drawY, w: drawW, h: drawH };
+            })
+            .finally(() => {
+              meta._capturing = false;
+            });
+        } else if (meta.initialCapture && meta.lastAnimationState) {
+          // Fast update for animation changes
+          const compositeCanvas = this._compositeCtx.canvas;
+          compositeCanvas.width = drawW;
+          compositeCanvas.height = drawH;
+
+          this._compositeCtx.save();
+
+          // Clear and reset any previous state
+          this._compositeCtx.setTransform(1, 0, 0, 1, 0, 0);
+          this._compositeCtx.clearRect(0, 0, drawW, drawH);
+
+          // Draw background
+          this._compositeCtx.drawImage(
+            this.staticSnapshotCanvas,
+            texX,
+            texY,
+            texW,
+            texH,
+            0,
+            0,
+            drawW,
+            drawH
+          );
+
+          // Set up transform for animated content
+          this._compositeCtx.translate(drawW / 2, drawH / 2);
+          if (currentState.transform !== "none") {
+            this._compositeCtx.transform(
+              ...this._parseTransform(currentState.transform)
+            );
+          }
+          this._compositeCtx.translate(-drawW / 2, -drawH / 2);
+          this._compositeCtx.globalAlpha =
+            parseFloat(currentState.opacity) || 1;
+
+          // Draw animated content
+          this._compositeCtx.drawImage(meta.initialCapture, 0, 0, drawW, drawH);
+          this._compositeCtx.restore();
+
+          // Update texture
+          gl.bindTexture(gl.TEXTURE_2D, this.texture);
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+          gl.texSubImage2D(
+            gl.TEXTURE_2D,
+            0,
+            drawX,
+            drawY,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            compositeCanvas
+          );
+
+          meta.lastAnimationState = currentState;
+          meta.prevDrawRect = { x: drawX, y: drawY, w: drawW, h: drawH };
+        }
       });
+    }
+
+    // Helper to parse CSS transform into canvas transform matrix
+    _parseTransform(transform) {
+      if (transform === "none") return [1, 0, 0, 1, 0, 0];
+
+      // Default identity matrix
+      const matrix = [1, 0, 0, 1, 0, 0];
+
+      // Extract matrix values if it's a matrix transform
+      const matrixMatch = transform.match(/matrix\((.*?)\)/);
+      if (matrixMatch) {
+        const values = matrixMatch[1].split(",").map(parseFloat);
+        return values;
+      }
+
+      return matrix;
     }
 
     /* ----------------------------- */
