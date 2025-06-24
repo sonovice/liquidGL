@@ -562,25 +562,53 @@
 
     /* ----------------------------- */
     _updateDynamicNodes() {
-      if (
-        !this.texture ||
-        !this.staticSnapshotCanvas ||
-        !this._dynamicNodes.length
-      )
-        return;
-
-      const now = performance.now();
-      const CAPTURE_INTERVAL = 16;
-      if (now - this._lastDynamicUpdate < CAPTURE_INTERVAL) return;
-      this._lastDynamicUpdate = now;
-
       const gl = this.gl;
       const snapRect = this.snapshotTarget.getBoundingClientRect();
 
-      this._dynamicNodes.forEach((node) => {
-        if (node._capturing) return;
+      // ---------------------------------------------
+      // 1) Build parent groups – any parent with >1 dynamic child
+      // ---------------------------------------------
+      const parentGroups = new Map(); // parentEl -> childNode[]
+      this._dynamicNodes.forEach((n) => {
+        const p = n.el.parentElement;
+        if (!p || p === this.snapshotTarget) return;
+        if (!parentGroups.has(p)) parentGroups.set(p, []);
+        parentGroups.get(p).push(n);
+      });
 
-        const el = node.el;
+      const processedChildren = new Set();
+      const captureTargets = []; // { el, meta }
+
+      // Helper to fetch or create meta storage for any element
+      if (!this._dynMeta) this._dynMeta = new WeakMap();
+      const getMeta = (el) => {
+        let m = this._dynMeta.get(el);
+        if (!m) {
+          m = { _capturing: false, prevDrawRect: null };
+          this._dynMeta.set(el, m);
+        }
+        return m;
+      };
+
+      parentGroups.forEach((children, parentEl) => {
+        if (children.length > 1) {
+          captureTargets.push({ el: parentEl, meta: getMeta(parentEl) });
+          children.forEach((c) => processedChildren.add(c));
+        }
+      });
+
+      // Add remaining individual nodes
+      this._dynamicNodes.forEach((n) => {
+        if (processedChildren.has(n)) return;
+        captureTargets.push({ el: n.el, meta: n });
+      });
+
+      // ---------------------------------------------
+      // 2) Process each capture target
+      // ---------------------------------------------
+      captureTargets.forEach(({ el, meta }) => {
+        if (meta._capturing) return;
+
         if (!document.contains(el)) return;
 
         const rect = el.getBoundingClientRect();
@@ -596,25 +624,27 @@
         const drawH = Math.round(texH);
 
         const needsHeal =
-          node.prevDrawRect &&
-          (node.prevDrawRect.x !== drawX ||
-            node.prevDrawRect.y !== drawY ||
-            node.prevDrawRect.w !== drawW ||
-            node.prevDrawRect.h !== drawH);
+          meta.prevDrawRect &&
+          (meta.prevDrawRect.x !== drawX ||
+            meta.prevDrawRect.y !== drawY ||
+            meta.prevDrawRect.w !== drawW ||
+            meta.prevDrawRect.h !== drawH);
 
-        // Nothing changed → skip capture to prevent unnecessary work and lag
-        if (!needsHeal && node.prevDrawRect) {
+        // Skip if nothing changed for individual nodes (not for grouped parent)
+        if (
+          !needsHeal &&
+          meta.prevDrawRect &&
+          parentGroups.get(el) === undefined
+        ) {
           return;
         }
 
         if (rect.width === 0 || rect.height === 0) {
-          // TODO: Clear previous rect if element disappears
-          node.prevRect = null;
-          node.prevDrawRect = null;
+          meta.prevDrawRect = null;
           return;
         }
 
-        node._capturing = true;
+        meta._capturing = true;
 
         html2canvas(el, {
           backgroundColor: null,
@@ -642,7 +672,7 @@
             compositeCanvas.width = drawW;
             compositeCanvas.height = drawH;
 
-            // Heal with the static background
+            // Heal background
             this._compositeCtx.drawImage(
               this.staticSnapshotCanvas,
               texX,
@@ -655,7 +685,7 @@
               drawH
             );
 
-            // Composite the dynamic element on top
+            // Draw fresh content
             this._compositeCtx.drawImage(cv, 0, 0, drawW, drawH);
 
             gl.bindTexture(gl.TEXTURE_2D, this.texture);
@@ -670,11 +700,10 @@
               compositeCanvas
             );
 
-            node.prevRect = { x: texX, y: texY, w: texW, h: texH };
-            node.prevDrawRect = { x: drawX, y: drawY, w: drawW, h: drawH };
+            meta.prevDrawRect = { x: drawX, y: drawY, w: drawW, h: drawH };
           })
           .finally(() => {
-            node._capturing = false;
+            meta._capturing = false;
           });
       });
     }
