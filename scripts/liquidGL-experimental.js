@@ -593,23 +593,16 @@
         const rect = el.getBoundingClientRect();
         if (rect.width === 0 || rect.height === 0) continue;
 
+        // Snap origin to whole CSS pixels to keep texel alignment stable
+        const rectLeftCss = Math.round(rect.left - snapRect.left);
+        const rectTopCss = Math.round(rect.top - snapRect.top);
+
         const scaledW = Math.round(rect.width * this.scaleFactor);
         const scaledH = Math.round(rect.height * this.scaleFactor);
         if (scaledW === 0 || scaledH === 0) continue;
 
-        const docX = rect.left - snapRect.left;
-        const docY = rect.top - snapRect.top;
-        const texX = Math.round(docX * this.scaleFactor);
-        const texY = Math.round(docY * this.scaleFactor);
-
-        // Bounds check – skip if completely outside texture
-        if (
-          texX < 0 ||
-          texY < 0 ||
-          texX + scaledW > this.textureWidth ||
-          texY + scaledH > this.textureHeight
-        )
-          continue;
+        const texX = rectLeftCss * this.scaleFactor;
+        const texY = rectTopCss * this.scaleFactor;
 
         node._capturing = true;
 
@@ -624,13 +617,12 @@
           clearW = scaledW,
           clearH = scaledH;
 
-        if (node.prevRect) {
-          const pr = node.prevRect;
-          clearX = Math.min(pr.x, texX);
-          clearY = Math.min(pr.y, texY);
-          clearW = Math.max(pr.x + pr.w, texX + scaledW) - clearX;
-          clearH = Math.max(pr.y + pr.h, texY + scaledH) - clearY;
-        }
+        // Pad by 1px on all sides to ensure antialiased edges are wiped
+        const pad = 1 * this.scaleFactor;
+        clearX = Math.max(0, clearX - pad);
+        clearY = Math.max(0, clearY - pad);
+        clearW = Math.min(this.textureWidth - clearX, clearW + pad * 2);
+        clearH = Math.min(this.textureHeight - clearY, clearH + pad * 2);
 
         if (
           this._blankCanvas.width !== clearW ||
@@ -667,6 +659,21 @@
             n.tagName === "CANVAS" || n.hasAttribute("data-liquid-ignore"),
         })
           .then((cv) => {
+            // Compute union of current and previous rect to fully clear
+            let uX = texX,
+              uY = texY,
+              uW = cv.width,
+              uH = cv.height;
+            if (node.prevRect) {
+              const pr = node.prevRect;
+              uX = Math.min(pr.x, texX);
+              uY = Math.min(pr.y, texY);
+              uW = Math.max(pr.x + pr.w, texX + cv.width) - uX;
+              uH = Math.max(pr.y + pr.h, texY + cv.height) - uY;
+            }
+
+            const pad = this.scaleFactor; // 1px pad
+            uX = Math.max(0, uX - pad);
             gl.bindTexture(gl.TEXTURE_2D, this.texture);
             gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
             gl.texSubImage2D(
