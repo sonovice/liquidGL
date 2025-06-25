@@ -985,7 +985,10 @@
 
     /* ----------------------------- */
     updateMetrics() {
-      const rect = this.el.getBoundingClientRect();
+      const rect =
+        this._mirrorActive && this._baseRect
+          ? this._baseRect
+          : this.el.getBoundingClientRect();
       this.rectPx = {
         left: rect.left,
         top: rect.top,
@@ -1257,6 +1260,7 @@
 
     _createMirrorCanvas() {
       if (this._mirror) return;
+      this._baseRect = this.el.getBoundingClientRect();
       this._mirror = document.createElement("canvas");
       Object.assign(this._mirror.style, {
         position: "fixed",
@@ -1272,7 +1276,7 @@
       document.body.appendChild(this._mirror);
 
       const updateClip = () => {
-        const r = this.el.getBoundingClientRect();
+        const r = this._baseRect || this.el.getBoundingClientRect();
         const radius = `${this.radiusPx}px`;
         this._mirror.style.clipPath = `inset(${r.top}px ${
           innerWidth - r.right
@@ -1291,7 +1295,7 @@
       window.removeEventListener("resize", this._mirrorClipUpdater);
       this._mirror.remove();
       this._mirror = this._mirrorCtx = null;
-
+      this._baseRect = null;
       this._mirrorActive = false;
     }
 
