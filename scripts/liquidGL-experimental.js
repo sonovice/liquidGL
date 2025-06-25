@@ -54,7 +54,7 @@
    *  Shared renderer (one per page)
    * ------------------------------------------------*/
   class LiquidGLRenderer {
-    constructor(snapshotSelector) {
+    constructor(snapshotSelector, snapshotResolution = 1.0) {
       this.canvas = document.createElement("canvas");
       this.canvas.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:2;`;
       this.canvas.setAttribute("data-liquid-ignore", "");
@@ -116,6 +116,12 @@
        * ------------------------------------------------*/
       this._dynamicNodes = [];
       this._lastDynamicUpdate = 0;
+
+      // User-defined snapshot resolution (html2canvas scale). Clamp to 0.1–3.0.
+      this._snapshotResolution = Math.max(
+        0.1,
+        Math.min(3.0, snapshotResolution)
+      );
     }
 
     /* ----------------------------- */
@@ -267,16 +273,36 @@
       this._capturing = true;
       const ignoreAttr = "data-liquid-ignore";
 
+      // --- BEGIN FIX: Hide lenses and shadows more robustly for snapshot ---
+      const originalStyles = [];
+      this.lenses.forEach((ln) => {
+        originalStyles.push({
+          el: ln.el,
+          display: ln.el.style.display,
+          shadow: ln._shadowEl,
+          shadowDisplay: ln._shadowEl ? ln._shadowEl.style.display : null,
+        });
+        ln.el.style.display = "none";
+        if (ln._shadowEl) {
+          ln._shadowEl.style.display = "none";
+        }
+      });
+      // --- END FIX ---
+
       this.canvas.style.visibility = "hidden";
-      this.lenses.forEach((ln) => ln.el.setAttribute(ignoreAttr, ""));
+      // this.lenses.forEach((ln) => ln.el.setAttribute(ignoreAttr, "")); // This is no longer needed
 
       try {
         const fullW = this.snapshotTarget.scrollWidth;
         const fullH = this.snapshotTarget.scrollHeight;
         const maxTex = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) || 8192;
-        let scale = Math.min(1, maxTex / fullW, maxTex / fullH);
-        // Match the behaviour of the stable build – overly large textures can cause artefacts
-        if (scale > 0.5) scale = 0.5;
+        let scale = Math.min(
+          this._snapshotResolution,
+          maxTex / fullW,
+          maxTex / fullH
+        );
+        // Keep scale within supported bounds (0.1 – 3.0)
+        scale = Math.max(0.1, scale);
         this.scaleFactor = scale;
 
         const isXOrigin = (src) => {
@@ -311,7 +337,15 @@
         console.error("LiquidGL snapshot failed", e);
       } finally {
         this.canvas.style.visibility = "visible";
-        this.lenses.forEach((ln) => ln.el.removeAttribute(ignoreAttr));
+        // --- BEGIN FIX: Restore original display styles ---
+        originalStyles.forEach(({ el, display, shadow, shadowDisplay }) => {
+          el.style.display = display;
+          if (shadow) {
+            shadow.style.display = shadowDisplay;
+          }
+        });
+        // --- END FIX ---
+        // this.lenses.forEach((ln) => ln.el.removeAttribute(ignoreAttr)); // This is no longer needed
         this._capturing = false;
       }
     }
@@ -319,6 +353,26 @@
     /* ----------------------------- */
     _uploadTexture(srcCanvas) {
       if (!srcCanvas) return;
+
+      if (!(srcCanvas instanceof HTMLCanvasElement)) {
+        const tmp = document.createElement("canvas");
+        tmp.width = srcCanvas.width || 0;
+        tmp.height = srcCanvas.height || 0;
+        if (tmp.width === 0 || tmp.height === 0) return;
+        try {
+          const ctx = tmp.getContext("2d");
+          ctx.drawImage(srcCanvas, 0, 0);
+          srcCanvas = tmp;
+        } catch (e) {
+          console.warn(
+            "LiquidGL: Unable to convert OffscreenCanvas for upload",
+            e
+          );
+          return;
+        }
+      }
+
+      if (srcCanvas.width === 0 || srcCanvas.height === 0) return;
       this.staticSnapshotCanvas = srcCanvas;
       const gl = this.gl;
       if (!this.texture) this.texture = gl.createTexture();
@@ -1211,6 +1265,7 @@
     const defaults = {
       target: ".menu-wrap",
       snapshot: "body",
+      resolution: 1.0,
       refraction: 0.01,
       bevelDepth: 0.08,
       bevelWidth: 0.15,
@@ -1247,7 +1302,7 @@
 
     let renderer = window.__LiquidGLRenderer__;
     if (!renderer) {
-      renderer = new LiquidGLRenderer(options.snapshot);
+      renderer = new LiquidGLRenderer(options.snapshot, options.resolution);
       window.__LiquidGLRenderer__ = renderer;
     }
 
