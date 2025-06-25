@@ -159,10 +159,11 @@
           vec2 b_px = 0.5 * u_resolution;
           float d = -udRoundBox(p_px, b_px, radius_px);
           float bevel_px = u_bevelWidth * min(u_resolution.x, u_resolution.y);
-          return 1.0 - smoothstep(-bevel_px * 0.5, bevel_px * 0.5, d);
+          return 1.0 - smoothstep(0.0, bevel_px, d);
         }
         void main(){
           vec2 delta = v_uv - 0.5;
+          delta.x *= u_resolution.y / u_resolution.x;
           vec2 dir = normalize(delta);
           if (length(delta) == 0.0) dir = vec2(0.0);
 
