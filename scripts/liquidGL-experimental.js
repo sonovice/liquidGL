@@ -117,7 +117,6 @@
       this._dynamicNodes = [];
       this._lastDynamicUpdate = 0;
 
-      // User-defined snapshot resolution (html2canvas scale). Clamp to 0.1–3.0.
       this._snapshotResolution = Math.max(
         0.1,
         Math.min(3.0, snapshotResolution)
@@ -290,7 +289,6 @@
       this._capturing = true;
       const ignoreAttr = "data-liquid-ignore";
 
-      // --- BEGIN FIX: Hide lenses and shadows more robustly for snapshot ---
       const originalStyles = [];
       this.lenses.forEach((ln) => {
         originalStyles.push({
@@ -304,10 +302,8 @@
           ln._shadowEl.style.display = "none";
         }
       });
-      // --- END FIX ---
 
       this.canvas.style.visibility = "hidden";
-      // this.lenses.forEach((ln) => ln.el.setAttribute(ignoreAttr, "")); // This is no longer needed
 
       try {
         const fullW = this.snapshotTarget.scrollWidth;
@@ -318,7 +314,7 @@
           maxTex / fullW,
           maxTex / fullH
         );
-        // Keep scale within supported bounds (0.1 – 3.0)
+
         scale = Math.max(0.1, scale);
         this.scaleFactor = scale;
 
@@ -354,15 +350,14 @@
         console.error("LiquidGL snapshot failed", e);
       } finally {
         this.canvas.style.visibility = "visible";
-        // --- BEGIN FIX: Restore original display styles ---
+
         originalStyles.forEach(({ el, display, shadow, shadowDisplay }) => {
           el.style.display = display;
           if (shadow) {
             shadow.style.display = shadowDisplay;
           }
         });
-        // --- END FIX ---
-        // this.lenses.forEach((ln) => ln.el.removeAttribute(ignoreAttr)); // This is no longer needed
+
         this._capturing = false;
       }
     }
@@ -446,10 +441,8 @@
       const time = (Date.now() - this.startTime) / 1000;
       gl.uniform1f(this.u.time, time);
 
-      // Update dynamic video regions before sampling
       this._updateDynamicVideos();
 
-      // Update other dynamic DOM nodes (e.g. animated text)
       this._updateDynamicNodes();
 
       this.lenses.forEach((lens) => {
@@ -602,7 +595,6 @@
             this._tmpCtx.clip();
           }
 
-          // Heal with the static background first
           this._tmpCtx.drawImage(
             this.staticSnapshotCanvas,
             texX,
@@ -615,7 +607,6 @@
             texH
           );
 
-          // Composite the video frame on top
           this._tmpCtx.drawImage(vid, 0, 0, texW, texH);
           this._tmpCtx.restore();
         } catch (e) {
@@ -625,8 +616,6 @@
         const drawX = Math.round(texX);
         const drawY = Math.round(texY);
 
-        // Boundary check to prevent warnings during resize, when element
-        // positions might be out of sync with the stale texture.
         if (
           drawX + texW > this.textureWidth ||
           drawY + texH > this.textureHeight ||
@@ -655,10 +644,7 @@
       const gl = this.gl;
       const snapRect = this.snapshotTarget.getBoundingClientRect();
 
-      // ---------------------------------------------
-      // 1) Build parent groups – any parent with >1 dynamic child
-      // ---------------------------------------------
-      const parentGroups = new Map(); // parentEl -> childNode[]
+      const parentGroups = new Map();
       this._dynamicNodes.forEach((n) => {
         const p = n.el.parentElement;
         if (!p || p === this.snapshotTarget) return;
@@ -667,9 +653,8 @@
       });
 
       const processedChildren = new Set();
-      const captureTargets = []; // { el, meta }
+      const captureTargets = [];
 
-      // Helper to fetch or create meta storage for any element
       if (!this._dynMeta) this._dynMeta = new WeakMap();
       const getMeta = (el) => {
         let m = this._dynMeta.get(el);
@@ -692,28 +677,22 @@
         }
       });
 
-      // Add remaining individual nodes
       this._dynamicNodes.forEach((n) => {
         if (processedChildren.has(n)) return;
         captureTargets.push({ el: n.el, meta: n });
       });
 
-      // Reuse canvas context
       if (!this._compositeCtx) {
         const canvas = document.createElement("canvas");
         this._compositeCtx = canvas.getContext("2d", { alpha: true });
       }
 
-      // ---------------------------------------------
-      // 2) Process each capture target
-      // ---------------------------------------------
       captureTargets.forEach(({ el, meta }) => {
         if (meta._capturing) return;
         if (!document.contains(el)) return;
 
         const rect = el.getBoundingClientRect();
 
-        // Optimization: only process visible elements
         const isInViewport =
           rect.bottom > 0 &&
           rect.top < window.innerHeight &&
@@ -734,7 +713,6 @@
         const drawW = Math.round(texW);
         const drawH = Math.round(texH);
 
-        // Boundary check to prevent warnings during resize
         if (
           drawX + drawW > this.textureWidth ||
           drawY + drawH > this.textureHeight ||
@@ -744,7 +722,6 @@
           return;
         }
 
-        // Get current animation state
         const style = window.getComputedStyle(el);
         const currentState = {
           transform: style.transform,
@@ -752,7 +729,6 @@
           filter: style.filter,
         };
 
-        // Check if we need to do a full capture
         const needsFullCapture =
           !meta.initialCapture ||
           !meta.prevDrawRect ||
@@ -762,7 +738,6 @@
         if (needsFullCapture) {
           meta._capturing = true;
 
-          // Do full html2canvas capture for initial or size-changed state
           html2canvas(el, {
             backgroundColor: null,
             width: rect.width,
@@ -779,11 +754,9 @@
             .then((cv) => {
               if (!this.texture || !this.staticSnapshotCanvas) return;
 
-              // Store initial capture
               meta.initialCapture = cv;
               meta.lastAnimationState = currentState;
 
-              // Render to texture
               const compositeCanvas = this._compositeCtx.canvas;
               compositeCanvas.width = drawW;
               compositeCanvas.height = drawH;
@@ -820,18 +793,15 @@
               meta._capturing = false;
             });
         } else if (meta.initialCapture && meta.lastAnimationState) {
-          // Fast update for animation changes
           const compositeCanvas = this._compositeCtx.canvas;
           compositeCanvas.width = drawW;
           compositeCanvas.height = drawH;
 
           this._compositeCtx.save();
 
-          // Clear and reset any previous state
           this._compositeCtx.setTransform(1, 0, 0, 1, 0, 0);
           this._compositeCtx.clearRect(0, 0, drawW, drawH);
 
-          // Draw background
           this._compositeCtx.drawImage(
             this.staticSnapshotCanvas,
             texX,
@@ -844,7 +814,6 @@
             drawH
           );
 
-          // Set up transform for animated content
           this._compositeCtx.translate(drawW / 2, drawH / 2);
           if (currentState.transform !== "none") {
             this._compositeCtx.transform(
@@ -855,11 +824,9 @@
           this._compositeCtx.globalAlpha =
             parseFloat(currentState.opacity) || 1;
 
-          // Draw animated content
           this._compositeCtx.drawImage(meta.initialCapture, 0, 0, drawW, drawH);
           this._compositeCtx.restore();
 
-          // Update texture
           gl.bindTexture(gl.TEXTURE_2D, this.texture);
           gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
           gl.texSubImage2D(
@@ -878,14 +845,11 @@
       });
     }
 
-    // Helper to parse CSS transform into canvas transform matrix
     _parseTransform(transform) {
       if (transform === "none") return [1, 0, 0, 1, 0, 0];
 
-      // Default identity matrix
       const matrix = [1, 0, 0, 1, 0, 0];
 
-      // Extract matrix values if it's a matrix transform
       const matrixMatch = transform.match(/matrix\((.*?)\)/);
       if (matrixMatch) {
         const values = matrixMatch[1].split(",").map(parseFloat);
@@ -897,7 +861,6 @@
 
     /* ----------------------------- */
     addDynamicElement(el) {
-      // Accept selector string, single element, or list/array
       if (!el) return;
       if (typeof el === "string") {
         this.snapshotTarget
@@ -911,13 +874,10 @@
       }
       if (!el.getBoundingClientRect) return;
 
-      // Ignore if identical node already registered
       if (this._dynamicNodes.some((n) => n.el === el)) return;
 
-      // If this element is ancestor of an existing node, replace that node (prefer higher-level container)
       this._dynamicNodes = this._dynamicNodes.filter((n) => !el.contains(n.el));
 
-      // If this element is descendant of an existing node, skip adding to avoid overlap
       const isDescendant = this._dynamicNodes.some((n) => n.el.contains(el));
       if (isDescendant) return;
 
@@ -1131,7 +1091,6 @@
       const getMaxTilt = () =>
         Number.isFinite(this.options.tiltFactor) ? this.options.tiltFactor : 5;
 
-      // We are moving the core logic to class methods to manage `this` and listeners correctly.
       this._applyTilt = (clientX, clientY) => {
         if (!this._tiltInteracting) {
           this._tiltInteracting = true;
@@ -1147,7 +1106,7 @@
               "transform 0.12s cubic-bezier(0.33,1,0.68,1)";
           }
         }
-        // Use the stable baseRect cached on interaction start.
+
         const r = this._baseRect || this.el.getBoundingClientRect();
         const cx = r.left + r.width / 2;
         const cy = r.top + r.height / 2;
@@ -1161,7 +1120,6 @@
         const rotX = -pctY * maxTilt;
         const transformStr = `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
 
-        // Use 50% for local transform origin, and the calculated pixel-based origin for fixed elements.
         this.el.style.transformOrigin = `50% 50%`;
         this.el.style.transform = transformStr;
 
@@ -1179,7 +1137,6 @@
       };
 
       this._smoothReset = () => {
-        // Remove the listener that checks for mouse leave first.
         document.removeEventListener("mousemove", this._boundCheckLeave);
 
         this.el.style.transition = "transform 0.4s cubic-bezier(0.33,1,0.68,1)";
@@ -1208,7 +1165,6 @@
         }
       };
 
-      // New handler to check if mouse has left the original element bounds.
       this._checkLeave = (e) => {
         const r = this._baseRect;
         if (!r) return;
@@ -1223,9 +1179,23 @@
       };
       this._boundCheckLeave = this._checkLeave.bind(this);
 
-      this._onMouseEnter = () => {
+      this._onMouseEnter = (e) => {
         this._tiltInteracting = false;
-        this._createMirrorCanvas(); // This sets this._baseRect for us.
+
+        this._createMirrorCanvas();
+
+        const r = this._baseRect || this.el.getBoundingClientRect();
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+
+        this._applyTilt(cx, cy);
+
+        if (e && typeof e.clientX === "number") {
+          requestAnimationFrame(() => {
+            this._applyTilt(e.clientX, e.clientY);
+          });
+        }
+
         document.addEventListener("mousemove", this._boundCheckLeave, {
           passive: true,
         });
@@ -1257,7 +1227,6 @@
       this.el.addEventListener("mousemove", this._onMouseMove.bind(this), {
         passive: true,
       });
-      // We no longer use the element's own mouseleave event.
       this.el.addEventListener("touchstart", this._onTouchStart.bind(this), {
         passive: true,
       });
@@ -1275,7 +1244,6 @@
       if (!this._tiltHandlersBound) return;
       this.el.removeEventListener("mouseenter", this._onMouseEnter.bind(this));
       this.el.removeEventListener("mousemove", this._onMouseMove.bind(this));
-      // Ensure the document listener is also removed on unbind.
       document.removeEventListener("mousemove", this._boundCheckLeave);
       this.el.removeEventListener("touchstart", this._onTouchStart.bind(this));
       this.el.removeEventListener("touchmove", this._onTouchMove.bind(this));
@@ -1303,7 +1271,6 @@
       document.body.appendChild(this._mirror);
 
       const updateClip = () => {
-        // Refresh baseRect on resize to keep metrics valid, then use it.
         if (this._mirrorActive) {
           this._baseRect = this._baseRect || this.el.getBoundingClientRect();
         }
