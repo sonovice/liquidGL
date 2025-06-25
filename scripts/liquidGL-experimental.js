@@ -1034,7 +1034,10 @@
 
       const syncShadow = () => {
         if (!this._shadowEl) return;
-        const r = this.el.getBoundingClientRect();
+        const r =
+          this._mirrorActive && this._baseRect
+            ? this._baseRect
+            : this.el.getBoundingClientRect();
         this._shadowEl.style.left = `${r.left}px`;
         this._shadowEl.style.top = `${r.top}px`;
         this._shadowEl.style.width = `${r.width}px`;
@@ -1128,7 +1131,8 @@
       const getMaxTilt = () =>
         Number.isFinite(this.options.tiltFactor) ? this.options.tiltFactor : 5;
 
-      const applyTilt = (clientX, clientY) => {
+      // We are moving the core logic to class methods to manage `this` and listeners correctly.
+      this._applyTilt = (clientX, clientY) => {
         if (!this._tiltInteracting) {
           this._tiltInteracting = true;
           this.el.style.transition =
@@ -1143,19 +1147,22 @@
               "transform 0.12s cubic-bezier(0.33,1,0.68,1)";
           }
         }
-        const rect = this.el.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
+        // Use the stable baseRect cached on interaction start.
+        const r = this._baseRect || this.el.getBoundingClientRect();
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
 
         this._pivotOrigin = `${cx}px ${cy}px`;
 
-        const pctX = (clientX - cx) / (rect.width / 2);
-        const pctY = (clientY - cy) / (rect.height / 2);
+        const pctX = (clientX - cx) / (r.width / 2);
+        const pctY = (clientY - cy) / (r.height / 2);
         const maxTilt = getMaxTilt();
         const rotY = pctX * maxTilt;
         const rotX = -pctY * maxTilt;
         const transformStr = `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
 
+        // Use 50% for local transform origin, and the calculated pixel-based origin for fixed elements.
+        this.el.style.transformOrigin = `50% 50%`;
         this.el.style.transform = transformStr;
 
         if (this._mirror) {
@@ -1164,20 +1171,19 @@
         }
 
         if (this._shadowEl) {
-          this._shadowEl.style.transformOrigin = "50% 50%";
+          this._shadowEl.style.transformOrigin = `50% 50%`;
           this._shadowEl.style.transform = transformStr;
         }
 
         this.renderer.render();
       };
 
-      this._onMouseEnter = () => {
-        this._tiltInteracting = false;
-        this._createMirrorCanvas();
-      };
-      this._onMouseMove = (e) => applyTilt(e.clientX, e.clientY);
-      const smoothReset = () => {
+      this._smoothReset = () => {
+        // Remove the listener that checks for mouse leave first.
+        document.removeEventListener("mousemove", this._boundCheckLeave);
+
         this.el.style.transition = "transform 0.4s cubic-bezier(0.33,1,0.68,1)";
+        this.el.style.transformOrigin = `50% 50%`;
         this.el.style.transform =
           "perspective(800px) rotateX(0deg) rotateY(0deg)";
         if (this._mirror) {
@@ -1196,49 +1202,69 @@
         if (this._shadowEl) {
           this._shadowEl.style.transition =
             "transform 0.4s cubic-bezier(0.33,1,0.68,1)";
-          this._shadowEl.style.transformOrigin = "50% 50%";
+          this._shadowEl.style.transformOrigin = `50% 50%`;
           this._shadowEl.style.transform =
             "perspective(800px) rotateX(0deg) rotateY(0deg)";
         }
       };
-      this._onMouseLeave = () => {
-        smoothReset();
+
+      // New handler to check if mouse has left the original element bounds.
+      this._checkLeave = (e) => {
+        const r = this._baseRect;
+        if (!r) return;
+        if (
+          e.clientX < r.left ||
+          e.clientX > r.right ||
+          e.clientY < r.top ||
+          e.clientY > r.bottom
+        ) {
+          this._smoothReset();
+        }
       };
+      this._boundCheckLeave = this._checkLeave.bind(this);
+
+      this._onMouseEnter = () => {
+        this._tiltInteracting = false;
+        this._createMirrorCanvas(); // This sets this._baseRect for us.
+        document.addEventListener("mousemove", this._boundCheckLeave, {
+          passive: true,
+        });
+      };
+
+      this._onMouseMove = (e) => this._applyTilt(e.clientX, e.clientY);
 
       this._onTouchStart = (e) => {
         this._tiltInteracting = false;
         this._createMirrorCanvas();
         if (e.touches && e.touches.length === 1) {
           const t = e.touches[0];
-          applyTilt(t.clientX, t.clientY);
+          this._applyTilt(t.clientX, t.clientY);
         }
       };
       this._onTouchMove = (e) => {
         if (e.touches && e.touches.length === 1) {
           const t = e.touches[0];
-          applyTilt(t.clientX, t.clientY);
+          this._applyTilt(t.clientX, t.clientY);
         }
       };
       this._onTouchEnd = () => {
-        smoothReset();
+        this._smoothReset();
       };
 
-      this.el.addEventListener("mouseenter", this._onMouseEnter, {
+      this.el.addEventListener("mouseenter", this._onMouseEnter.bind(this), {
         passive: true,
       });
-      this.el.addEventListener("mousemove", this._onMouseMove, {
+      this.el.addEventListener("mousemove", this._onMouseMove.bind(this), {
         passive: true,
       });
-      this.el.addEventListener("mouseleave", this._onMouseLeave, {
+      // We no longer use the element's own mouseleave event.
+      this.el.addEventListener("touchstart", this._onTouchStart.bind(this), {
         passive: true,
       });
-      this.el.addEventListener("touchstart", this._onTouchStart, {
+      this.el.addEventListener("touchmove", this._onTouchMove.bind(this), {
         passive: true,
       });
-      this.el.addEventListener("touchmove", this._onTouchMove, {
-        passive: true,
-      });
-      this.el.addEventListener("touchend", this._onTouchEnd, {
+      this.el.addEventListener("touchend", this._onTouchEnd.bind(this), {
         passive: true,
       });
 
@@ -1247,12 +1273,13 @@
 
     _unbindTiltHandlers() {
       if (!this._tiltHandlersBound) return;
-      this.el.removeEventListener("mouseenter", this._onMouseEnter);
-      this.el.removeEventListener("mousemove", this._onMouseMove);
-      this.el.removeEventListener("mouseleave", this._onMouseLeave);
-      this.el.removeEventListener("touchstart", this._onTouchStart);
-      this.el.removeEventListener("touchmove", this._onTouchMove);
-      this.el.removeEventListener("touchend", this._onTouchEnd);
+      this.el.removeEventListener("mouseenter", this._onMouseEnter.bind(this));
+      this.el.removeEventListener("mousemove", this._onMouseMove.bind(this));
+      // Ensure the document listener is also removed on unbind.
+      document.removeEventListener("mousemove", this._boundCheckLeave);
+      this.el.removeEventListener("touchstart", this._onTouchStart.bind(this));
+      this.el.removeEventListener("touchmove", this._onTouchMove.bind(this));
+      this.el.removeEventListener("touchend", this._onTouchEnd.bind(this));
       this._tiltHandlersBound = false;
       this.el.style.transform = "";
       this.renderer.render();
@@ -1276,6 +1303,10 @@
       document.body.appendChild(this._mirror);
 
       const updateClip = () => {
+        // Refresh baseRect on resize to keep metrics valid, then use it.
+        if (this._mirrorActive) {
+          this._baseRect = this._baseRect || this.el.getBoundingClientRect();
+        }
         const r = this._baseRect || this.el.getBoundingClientRect();
         const radius = `${this.radiusPx}px`;
         this._mirror.style.clipPath = `inset(${r.top}px ${
