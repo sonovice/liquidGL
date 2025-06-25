@@ -149,6 +149,8 @@
         uniform bool  u_specular;
         uniform float u_revealProgress;
         uniform int   u_revealType;
+        uniform float u_tiltX;
+        uniform float u_tiltY;
 
         float udRoundBox( vec2 p, vec2 b, float r ) {
           return length(max(abs(p)-b+r,0.0))-r;
@@ -175,9 +177,13 @@
           // Apply aspect ratio correction to the final offset, not the coordinates.
           offset.x *= u_resolution.y / u_resolution.x;
 
+          // New tilt logic
+          float tiltRefractionScale = 0.05; // Adjustable factor
+          vec2 tiltOffset = vec2(tan(radians(u_tiltY)), -tan(radians(u_tiltX))) * tiltRefractionScale;
+
           vec2 flippedUV = vec2(v_uv.x, 1.0 - v_uv.y);
           vec2 mapped = u_bounds.xy + flippedUV * u_bounds.zw;
-          vec2 refracted = mapped + offset;
+          vec2 refracted = mapped + offset - tiltOffset;
 
           float oob = max(max(-refracted.x, refracted.x - 1.0), max(-refracted.y, refracted.y - 1.0));
           float blend = 1.0 - smoothstep(0.0, 0.01, oob);
@@ -270,6 +276,8 @@
         specular: gl.getUniformLocation(this.program, "u_specular"),
         revealProgress: gl.getUniformLocation(this.program, "u_revealProgress"),
         revealType: gl.getUniformLocation(this.program, "u_revealType"),
+        tiltX: gl.getUniformLocation(this.program, "u_tiltX"),
+        tiltY: gl.getUniformLocation(this.program, "u_tiltY"),
       };
     }
 
@@ -533,6 +541,9 @@
       gl.uniform1i(this.u.specular, lens.options.specular ? 1 : 0);
       gl.uniform1f(this.u.revealProgress, lens._revealProgress || 1.0);
       gl.uniform1i(this.u.revealType, lens.revealTypeIndex || 0);
+
+      gl.uniform1f(this.u.tiltX, lens.tiltX || 0);
+      gl.uniform1f(this.u.tiltY, lens.tiltY || 0);
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
@@ -903,6 +914,8 @@
       this.radiusPx = 0;
       this.revealTypeIndex = this.options.reveal === "fade" ? 1 : 0;
       this._revealProgress = this.revealTypeIndex === 0 ? 1 : 0;
+      this.tiltX = 0;
+      this.tiltY = 0;
 
       this.originalShadow = this.el.style.boxShadow;
       this.originalOpacity = this.el.style.opacity;
@@ -1120,6 +1133,9 @@
         const rotX = -pctY * maxTilt;
         const transformStr = `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
 
+        this.tiltX = rotX;
+        this.tiltY = rotY;
+
         this.el.style.transformOrigin = `50% 50%`;
         this.el.style.transform = transformStr;
 
@@ -1143,6 +1159,11 @@
         this.el.style.transformOrigin = `50% 50%`;
         this.el.style.transform =
           "perspective(800px) rotateX(0deg) rotateY(0deg)";
+
+        this.tiltX = 0;
+        this.tiltY = 0;
+        this.renderer.render();
+
         if (this._mirror) {
           this._mirror.style.transition =
             "transform 0.4s cubic-bezier(0.33, 1, 0.68, 1)";
