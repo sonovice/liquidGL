@@ -159,11 +159,10 @@
           vec2 b_px = 0.5 * u_resolution;
           float d = -udRoundBox(p_px, b_px, radius_px);
           float bevel_px = u_bevelWidth * min(u_resolution.x, u_resolution.y);
-          return 1.0 - smoothstep(0.0, bevel_px, d);
+          return 1.0 - smoothstep(-bevel_px * 0.5, bevel_px * 0.5, d);
         }
         void main(){
           vec2 delta = v_uv - 0.5;
-          delta.x *= u_resolution.x / u_resolution.y;
           vec2 dir = normalize(delta);
           if (length(delta) == 0.0) dir = vec2(0.0);
 
@@ -172,6 +171,9 @@
           float offsetAmt = (edge * u_refraction + pow(edge, 10.0) * u_bevelDepth) * min_dimension / u_resolution.y;
           float centreBlend = smoothstep(0.15, 0.45, length(delta));
           vec2 offset = dir * offsetAmt * centreBlend;
+
+          // Apply aspect ratio correction to the final offset, not the coordinates.
+          offset.x *= u_resolution.y / u_resolution.x;
 
           vec2 flippedUV = vec2(v_uv.x, 1.0 - v_uv.y);
           vec2 mapped = u_bounds.xy + flippedUV * u_bounds.zw;
