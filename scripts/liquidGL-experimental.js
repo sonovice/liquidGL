@@ -149,6 +149,7 @@
         uniform bool  u_specular;
         uniform float u_revealProgress;
         uniform int   u_revealType;
+        uniform float u_distance;
 
         float udRoundBox( vec2 p, vec2 b, float r ) {
           return length(max(abs(p)-b+r,0.0))-r;
@@ -167,7 +168,7 @@
           if (length(delta) == 0.0) dir = vec2(0.0);
 
           float edge = edgeFactor(v_uv, u_radius);
-          float offsetAmt = edge * u_refraction + pow(edge, 10.0) * u_bevelDepth;
+          float offsetAmt = (edge * u_refraction + pow(edge, 10.0) * u_bevelDepth) * u_distance / u_resolution.y;
           float centreBlend = smoothstep(0.15, 0.45, length(delta));
           vec2 offset = dir * offsetAmt * centreBlend;
 
@@ -254,6 +255,7 @@
         specular: gl.getUniformLocation(this.program, "u_specular"),
         revealProgress: gl.getUniformLocation(this.program, "u_revealProgress"),
         revealType: gl.getUniformLocation(this.program, "u_revealType"),
+        distance: gl.getUniformLocation(this.program, "u_distance"),
       };
     }
 
@@ -515,6 +517,7 @@
       gl.uniform1f(this.u.bevelWidth, lens.options.bevelWidth);
       gl.uniform1f(this.u.frost, lens.options.frost);
       gl.uniform1f(this.u.radius, lens.radiusPx);
+      gl.uniform1f(this.u.distance, Math.min(rect.width, rect.height));
       gl.uniform1i(this.u.specular, lens.options.specular ? 1 : 0);
       gl.uniform1f(this.u.revealProgress, lens._revealProgress || 1.0);
       gl.uniform1i(this.u.revealType, lens.revealTypeIndex || 0);
