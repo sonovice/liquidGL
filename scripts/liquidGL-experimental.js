@@ -139,6 +139,7 @@
         varying vec2 v_uv;
         uniform sampler2D u_tex;
         uniform vec2  u_resolution;
+        uniform vec2  u_textureResolution;
         uniform vec4  u_bounds;    // xy = origin, zw = scale in UV
         uniform float u_refraction;
         uniform float u_bevelDepth;
@@ -180,8 +181,16 @@
           float blend = 1.0 - smoothstep(0.0, 0.01, oob);
           vec2 sampleUV = mix(mapped, refracted, blend);
 
-          vec4 baseCol   = texture2D(u_tex, mapped);      // no refraction
-          vec4 refrCol   = texture2D(u_tex, sampleUV);    // with refraction
+          vec4 baseCol   = texture2D(u_tex, mapped);
+
+          // Smoothed refraction: 5-point multisampling to reduce aliasing from texture stretching.
+          vec2 texel = 1.0 / u_textureResolution;
+          vec4 refrCol = texture2D(u_tex, sampleUV);
+          refrCol += texture2D(u_tex, sampleUV + vec2( texel.x, 0.0));
+          refrCol += texture2D(u_tex, sampleUV + vec2(-texel.x, 0.0));
+          refrCol += texture2D(u_tex, sampleUV + vec2(0.0,  texel.y));
+          refrCol += texture2D(u_tex, sampleUV + vec2(0.0, -texel.y));
+          refrCol /= 5.0;
 
           // If refracted sample is from a clipped video corner (alpha ~0), use base color instead.
           if (refrCol.a < 0.1) {
@@ -245,6 +254,10 @@
       this.u = {
         tex: gl.getUniformLocation(this.program, "u_tex"),
         res: gl.getUniformLocation(this.program, "u_resolution"),
+        textureResolution: gl.getUniformLocation(
+          this.program,
+          "u_textureResolution"
+        ),
         bounds: gl.getUniformLocation(this.program, "u_bounds"),
         refraction: gl.getUniformLocation(this.program, "u_refraction"),
         bevelDepth: gl.getUniformLocation(this.program, "u_bevelDepth"),
@@ -511,6 +524,11 @@
       const hUV = (rect.height * this.scaleFactor) / this.textureHeight;
       gl.uniform4f(this.u.bounds, leftUV, topUV, wUV, hUV);
 
+      gl.uniform2f(
+        this.u.textureResolution,
+        this.textureWidth,
+        this.textureHeight
+      );
       gl.uniform1f(this.u.refraction, lens.options.refraction);
       gl.uniform1f(this.u.bevelDepth, lens.options.bevelDepth);
       gl.uniform1f(this.u.bevelWidth, lens.options.bevelWidth);
