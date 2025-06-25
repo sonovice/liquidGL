@@ -149,7 +149,6 @@
         uniform bool  u_specular;
         uniform float u_revealProgress;
         uniform int   u_revealType;
-        uniform float u_distance;
 
         float udRoundBox( vec2 p, vec2 b, float r ) {
           return length(max(abs(p)-b+r,0.0))-r;
@@ -168,7 +167,8 @@
           if (length(delta) == 0.0) dir = vec2(0.0);
 
           float edge = edgeFactor(v_uv, u_radius);
-          float offsetAmt = (edge * u_refraction + pow(edge, 10.0) * u_bevelDepth) * u_distance / u_resolution.y;
+          float min_dimension = min(u_resolution.x, u_resolution.y);
+          float offsetAmt = (edge * u_refraction + pow(edge, 10.0) * u_bevelDepth) * min_dimension / u_resolution.y;
           float centreBlend = smoothstep(0.15, 0.45, length(delta));
           vec2 offset = dir * offsetAmt * centreBlend;
 
@@ -255,7 +255,6 @@
         specular: gl.getUniformLocation(this.program, "u_specular"),
         revealProgress: gl.getUniformLocation(this.program, "u_revealProgress"),
         revealType: gl.getUniformLocation(this.program, "u_revealType"),
-        distance: gl.getUniformLocation(this.program, "u_distance"),
       };
     }
 
@@ -517,7 +516,6 @@
       gl.uniform1f(this.u.bevelWidth, lens.options.bevelWidth);
       gl.uniform1f(this.u.frost, lens.options.frost);
       gl.uniform1f(this.u.radius, lens.radiusPx);
-      gl.uniform1f(this.u.distance, Math.min(rect.width, rect.height));
       gl.uniform1i(this.u.specular, lens.options.specular ? 1 : 0);
       gl.uniform1f(this.u.revealProgress, lens._revealProgress || 1.0);
       gl.uniform1i(this.u.revealType, lens.revealTypeIndex || 0);
@@ -603,13 +601,27 @@
           return;
         }
 
+        const drawX = Math.round(texX);
+        const drawY = Math.round(texY);
+
+        // Boundary check to prevent warnings during resize, when element
+        // positions might be out of sync with the stale texture.
+        if (
+          drawX + texW > this.textureWidth ||
+          drawY + texH > this.textureHeight ||
+          drawX < 0 ||
+          drawY < 0
+        ) {
+          return;
+        }
+
         gl.bindTexture(gl.TEXTURE_2D, this.texture);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
         gl.texSubImage2D(
           gl.TEXTURE_2D,
           0,
-          Math.round(texX),
-          Math.round(texY),
+          drawX,
+          drawY,
           gl.RGBA,
           gl.UNSIGNED_BYTE,
           this._tmpCanvas
@@ -700,6 +712,16 @@
         const drawY = Math.round(texY);
         const drawW = Math.round(texW);
         const drawH = Math.round(texH);
+
+        // Boundary check to prevent warnings during resize
+        if (
+          drawX + drawW > this.textureWidth ||
+          drawY + drawH > this.textureHeight ||
+          drawX < 0 ||
+          drawY < 0
+        ) {
+          return;
+        }
 
         // Get current animation state
         const style = window.getComputedStyle(el);
