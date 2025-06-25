@@ -622,6 +622,18 @@
         if (!document.contains(el)) return;
 
         const rect = el.getBoundingClientRect();
+
+        // Optimization: only process visible elements
+        const isInViewport =
+          rect.bottom > 0 &&
+          rect.top < window.innerHeight &&
+          rect.right > 0 &&
+          rect.left < window.innerWidth;
+
+        if (!isInViewport) {
+          return;
+        }
+
         const texX = (rect.left - snapRect.left) * this.scaleFactor;
         const texY = (rect.top - snapRect.top) * this.scaleFactor;
         const texW = rect.width * this.scaleFactor;
@@ -643,8 +655,9 @@
         // Check if we need to do a full capture
         const needsFullCapture =
           !meta.initialCapture ||
-          meta.prevDrawRect?.w !== drawW ||
-          meta.prevDrawRect?.h !== drawH;
+          !meta.prevDrawRect ||
+          meta.prevDrawRect.w !== drawW ||
+          meta.prevDrawRect.h !== drawH;
 
         if (needsFullCapture) {
           meta._capturing = true;
