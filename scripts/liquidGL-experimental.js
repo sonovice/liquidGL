@@ -106,6 +106,7 @@
       this._videoNodes = Array.from(
         this.snapshotTarget.querySelectorAll("video")
       );
+      this._videoNodes = this._videoNodes.filter((v) => !this._isIgnored(v));
       this._tmpCanvas = document.createElement("canvas");
       this._tmpCtx = this._tmpCanvas.getContext("2d");
 
@@ -295,34 +296,11 @@
     async captureSnapshot() {
       if (this._capturing || typeof html2canvas === "undefined") return;
       this._capturing = true;
-      const ignoreAttr = "data-liquid-ignore";
 
-      const originalStyles = [];
-      this.lenses.forEach((ln) => {
-        originalStyles.push({
-          el: ln.el,
-          display: ln.el.style.display,
-          shadow: ln._shadowEl,
-          shadowDisplay: ln._shadowEl ? ln._shadowEl.style.display : null,
-        });
-        ln.el.style.display = "none";
-        if (ln._shadowEl) {
-          ln._shadowEl.style.display = "none";
-        }
-      });
-
-      const ignoredNodes = Array.from(
-        this.snapshotTarget.querySelectorAll(`[${ignoreAttr}]`)
-      );
-      const originalVisibilities = ignoredNodes.map((node) => {
-        const visibility = node.style.visibility;
-        node.style.visibility = "hidden";
-        return { node, visibility };
-      });
-
-      this.canvas.style.visibility = "hidden";
+      const undos = [];
 
       try {
+        // Calculate dimensions BEFORE any modifications
         const fullW = this.snapshotTarget.scrollWidth;
         const fullH = this.snapshotTarget.scrollHeight;
         const maxTex = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) || 8192;
@@ -331,20 +309,75 @@
           maxTex / fullW,
           maxTex / fullH
         );
-
         scale = Math.max(0.1, scale);
         this.scaleFactor = scale;
 
-        const isXOrigin = (src) => {
-          try {
-            const u = new URL(src, document.baseURI);
-            return u.origin !== location.origin;
-          } catch {
-            return false;
-          }
-        };
+        // Hide the WebGL canvas and all lens elements
+        this.canvas.style.visibility = "hidden";
+        undos.push(() => (this.canvas.style.visibility = "visible"));
 
-        const h2cOpts = {
+        this.lenses.forEach((lens) => {
+          const originalDisplay = lens.el.style.display;
+          lens.el.style.display = "none";
+          undos.push(() => (lens.el.style.display = originalDisplay));
+
+          if (lens._shadowEl) {
+            const originalShadowDisplay = lens._shadowEl.style.display;
+            lens._shadowEl.style.display = "none";
+            undos.push(
+              () => (lens._shadowEl.style.display = originalShadowDisplay)
+            );
+          }
+        });
+
+        // Handle ignored elements by modifying them in place
+        const ignoredElements = this.snapshotTarget.querySelectorAll(
+          "[data-liquid-ignore]"
+        );
+
+        const ignoredStates = new Map();
+        ignoredElements.forEach((el) => {
+          if (el === this.canvas) return;
+
+          // Store original states
+          ignoredStates.set(el, {
+            visibility: el.style.visibility,
+            opacity: el.style.opacity,
+            filter: el.style.filter,
+            background: el.style.background,
+            backgroundImage: el.style.backgroundImage,
+            color: el.style.color,
+            src: el.tagName === "VIDEO" || el.tagName === "IMG" ? el.src : null,
+          });
+
+          // Make element invisible while preserving layout
+          el.style.visibility = "hidden";
+          el.style.opacity = "0";
+          el.style.filter = "opacity(0)";
+          el.style.background = "none";
+          el.style.backgroundImage = "none";
+          el.style.color = "transparent";
+
+          // For videos and images, temporarily remove source
+          if (el.tagName === "VIDEO" || el.tagName === "IMG") {
+            el.src = "";
+          }
+
+          // Add to undos
+          undos.push(() => {
+            const state = ignoredStates.get(el);
+            el.style.visibility = state.visibility;
+            el.style.opacity = state.opacity;
+            el.style.filter = state.filter;
+            el.style.background = state.background;
+            el.style.backgroundImage = state.backgroundImage;
+            el.style.color = state.color;
+            if (state.src) el.src = state.src;
+          });
+        });
+
+        // Take snapshot with modified elements
+        const snapCanvas = await html2canvas(this.snapshotTarget, {
           allowTaint: false,
           useCORS: true,
           backgroundColor: null,
@@ -354,30 +387,19 @@
           scrollX: 0,
           scrollY: 0,
           scale: scale,
-          ignoreElements: (el) => {
-            if (el.tagName === "CANVAS") return true;
-            if (el.tagName === "IMG" && isXOrigin(el.src)) return true;
-            return false;
+          ignoreElements: (element) => {
+            return element.tagName === "CANVAS" && element !== this.canvas;
           },
-        };
-        const snapCanvas = await html2canvas(this.snapshotTarget, h2cOpts);
+        });
+
         this._uploadTexture(snapCanvas);
       } catch (e) {
         console.error("LiquidGL snapshot failed", e);
       } finally {
-        this.canvas.style.visibility = "visible";
-
-        originalStyles.forEach(({ el, display, shadow, shadowDisplay }) => {
-          el.style.display = display;
-          if (shadow) {
-            shadow.style.display = shadowDisplay;
-          }
-        });
-
-        originalVisibilities.forEach(({ node, visibility }) => {
-          node.style.visibility = visibility;
-        });
-
+        // Restore original DOM state
+        for (let i = undos.length - 1; i >= 0; i--) {
+          undos[i]();
+        }
         this._capturing = false;
       }
     }
@@ -588,7 +610,12 @@
       const snapRect = this.snapshotTarget.getBoundingClientRect();
 
       this._videoNodes.forEach((vid) => {
+        // Skip completely if video is ignored
+        if (this._isIgnored(vid)) return;
+
+        // Skip if video isn't ready
         if (vid.readyState < 2) return;
+
         const rect = vid.getBoundingClientRect();
 
         const texX = (rect.left - snapRect.left) * this.scaleFactor;
@@ -606,18 +633,7 @@
         try {
           this._tmpCtx.save();
 
-          const style = window.getComputedStyle(vid);
-          const scaledRadii = {
-            tl: parseFloat(style.borderTopLeftRadius) * this.scaleFactor,
-            tr: parseFloat(style.borderTopRightRadius) * this.scaleFactor,
-            br: parseFloat(style.borderBottomRightRadius) * this.scaleFactor,
-            bl: parseFloat(style.borderBottomLeftRadius) * this.scaleFactor,
-          };
-          if (Object.values(scaledRadii).some((r) => r > 0)) {
-            this._createRoundedRectPath(this._tmpCtx, texW, texH, scaledRadii);
-            this._tmpCtx.clip();
-          }
-
+          // Draw the static background from snapshot
           this._tmpCtx.drawImage(
             this.staticSnapshotCanvas,
             texX,
@@ -630,6 +646,20 @@
             texH
           );
 
+          // Apply any border radius from the video element
+          const style = window.getComputedStyle(vid);
+          const scaledRadii = {
+            tl: parseFloat(style.borderTopLeftRadius) * this.scaleFactor,
+            tr: parseFloat(style.borderTopRightRadius) * this.scaleFactor,
+            br: parseFloat(style.borderBottomRightRadius) * this.scaleFactor,
+            bl: parseFloat(style.borderBottomLeftRadius) * this.scaleFactor,
+          };
+          if (Object.values(scaledRadii).some((r) => r > 0)) {
+            this._createRoundedRectPath(this._tmpCtx, texW, texH, scaledRadii);
+            this._tmpCtx.clip();
+          }
+
+          // Draw the video frame
           this._tmpCtx.drawImage(vid, 0, 0, texW, texH);
           this._tmpCtx.restore();
         } catch (e) {
@@ -914,6 +944,16 @@
         prevRect: null,
         prevDrawRect: null,
       });
+    }
+
+    // -----------------------------
+    // Utility: true if element or any ancestor has data-liquid-ignore
+    _isIgnored(el) {
+      return !!(
+        el &&
+        typeof el.closest === "function" &&
+        el.closest("[data-liquid-ignore]")
+      );
     }
   }
 
