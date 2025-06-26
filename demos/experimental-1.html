@@ -31,8 +31,6 @@
         width: calc(100vw - 20vw);
         height: calc(100svh - 20vw);
         border-radius: 2vw;
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(20px) saturate(180%);
         transform: scaleX(0);
         transform-origin: center;
         will-change: transform;
@@ -183,7 +181,7 @@
             bevelWidth: 0.057,
             frost: 0,
             specular: true,
-            shadow: true,
+            shadow: false,
             reveal: "fade",
             tilt: true,
             tiltFactor: 10,
@@ -193,9 +191,11 @@
                   scaleX: 1,
                   duration: 1.2,
                   ease: "expo.out",
-                });
-                gsap.set(lens.el, {
-                  pointerEvents: "auto",
+                  onComplete: function () {
+                    gsap.set(lens.el, {
+                      pointerEvents: "auto",
+                    });
+                  },
                 });
               },
             },
@@ -229,11 +229,18 @@
           folder
             .add(first.options, "specular")
             .onChange((v) => sync("specular", v));
+          folder.add(first.options, "tilt").onChange((v) => sync("tilt", v));
+          folder
+            .add(first.options, "tiltFactor", 0, 25, 0.1)
+            .onChange((v) => sync("tiltFactor", v));
           folder
             .add(first.options, "shadow")
             .name("Shadow")
             .onChange((v) => lensArr.forEach((ln) => ln.setShadow(v)));
-          folder.add(first.options, "reveal", ["none", "fade"]).name("Reveal");
+          folder
+            .add(first.options, "reveal", ["none", "fade"])
+            .name("Reveal")
+            .onChange((v) => sync("reveal", v));
           folder.close();
 
           /* 5. Lenis + GSAP ticker sync */
