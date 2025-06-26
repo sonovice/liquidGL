@@ -110,6 +110,13 @@
         visibility: hidden;
       }
 
+      .video-hover-area {
+        display: inline-block;
+        position: relative;
+        line-height: 0;
+        cursor: pointer;
+      }
+
       /* Video Player Styles */
       .play-icon {
         position: fixed;
@@ -278,14 +285,16 @@
       <div
         class="content-section"
       >
-        <video
-          class="banner-video"
-          src="/assets/liquidGlass-Full-Promo25fps-OPT.mp4"
-          autoplay
-          muted
-          loop
-          playsinline
-        ></video>
+        <div class="video-hover-area">
+          <video
+            class="banner-video"
+            src="/assets/liquidGlass-Full-Promo25fps-OPT.mp4"
+            autoplay
+            muted
+            loop
+            playsinline
+          ></video>
+        </div>
       </div>
       <div
       class="content-section"
@@ -464,8 +473,15 @@
           lenis.on("scroll", ScrollTrigger.update);
           gsap.ticker.add((t) => {
             lenis.raf(t * 1000);
-            if (window.__LiquidGLRenderer__)
-              window.__LiquidGLRenderer__.render();
+            if (window.glassEffect) {
+            // For multi-instance build, glassEffect may be an array; call renderer directly.
+            if (Array.isArray(window.glassEffect)) {
+              if (window.__LiquidGLRenderer__)
+                window.__LiquidGLRenderer__.render();
+            } else if (!window.glassEffect.options.specular) {
+              window.glassEffect.render();
+            }
+          }
           });
           gsap.ticker.lagSmoothing(0);
         });
@@ -474,7 +490,7 @@
     <script>
       document.addEventListener("DOMContentLoaded", () => {
         // Select elements without modifying existing HTML
-        const videoTrigger = document.querySelector(".banner-video").parentElement;
+        const videoTrigger = document.querySelector(".video-hover-area");
         const playIcon = document.querySelector(".play-icon");
         const fullscreenPlayer = document.querySelector(".fullscreen-player");
         const fullscreenVideo = fullscreenPlayer.querySelector("video");
@@ -585,7 +601,7 @@
         });
 
         videoTrigger.addEventListener("mouseleave", () => {
-          gsap.to(playIcon, { autoAlpha: 0, scale: 0.5, duration: 0.3 });
+          gsap.to(playIcon, { autoAlpha: 0, scale: 0, duration: 0.3 });
         });
 
         videoTrigger.addEventListener("mousemove", (e) => {
