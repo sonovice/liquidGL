@@ -311,6 +311,15 @@
         }
       });
 
+      const ignoredNodes = Array.from(
+        this.snapshotTarget.querySelectorAll(`[${ignoreAttr}]`)
+      );
+      const originalVisibilities = ignoredNodes.map((node) => {
+        const visibility = node.style.visibility;
+        node.style.visibility = "hidden";
+        return { node, visibility };
+      });
+
       this.canvas.style.visibility = "hidden";
 
       try {
@@ -346,7 +355,6 @@
           scrollY: 0,
           scale: scale,
           ignoreElements: (el) => {
-            if (el.hasAttribute(ignoreAttr)) return true;
             if (el.tagName === "CANVAS") return true;
             if (el.tagName === "IMG" && isXOrigin(el.src)) return true;
             return false;
@@ -364,6 +372,10 @@
           if (shadow) {
             shadow.style.display = shadowDisplay;
           }
+        });
+
+        originalVisibilities.forEach(({ node, visibility }) => {
+          node.style.visibility = visibility;
         });
 
         this._capturing = false;
@@ -884,6 +896,10 @@
         return;
       }
       if (!el.getBoundingClientRect) return;
+
+      if (el.closest && el.closest("[data-liquid-ignore]")) {
+        return;
+      }
 
       if (this._dynamicNodes.some((n) => n.el === el)) return;
 
