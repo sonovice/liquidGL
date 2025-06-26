@@ -1348,6 +1348,38 @@
         passive: true,
       });
 
+      /* ----------------------------- */
+      // Pointer-events are disabled on the element, so native enter/move events
+      // never reach it.  We proxy global pointer movements instead.
+      this._tiltActive = false;
+
+      this._docPointerMove = (e) => {
+        const x = e.clientX ?? (e.touches && e.touches[0].clientX);
+        const y = e.clientY ?? (e.touches && e.touches[0].clientY);
+        if (x === undefined || y === undefined) return;
+
+        const r = this.el.getBoundingClientRect();
+        const inside =
+          x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+
+        if (inside) {
+          if (!this._tiltActive) {
+            this._tiltActive = true;
+            this._onMouseEnter({ clientX: x, clientY: y });
+          } else {
+            this._applyTilt(x, y);
+          }
+        } else if (this._tiltActive) {
+          this._tiltActive = false;
+          this._smoothReset();
+        }
+      };
+
+      // Listen on pointer events so we get mouse + touch in one go.
+      document.addEventListener("pointermove", this._docPointerMove, {
+        passive: true,
+      });
+
       this._tiltHandlersBound = true;
     }
 
@@ -1359,6 +1391,11 @@
       this.el.removeEventListener("touchstart", this._onTouchStart.bind(this));
       this.el.removeEventListener("touchmove", this._onTouchMove.bind(this));
       this.el.removeEventListener("touchend", this._onTouchEnd.bind(this));
+
+      if (this._docPointerMove) {
+        document.removeEventListener("pointermove", this._docPointerMove);
+        this._docPointerMove = null;
+      }
       this._tiltHandlersBound = false;
       this.el.style.transform = "";
       this.renderer.render();
