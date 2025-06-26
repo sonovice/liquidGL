@@ -55,7 +55,12 @@
       }
 
       .video-section {
-        background-color: #111;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: auto!important;
+        padding: 10vw 0;
       }
 
       .banner-text-container {
@@ -63,7 +68,7 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 2rem;
+        gap: 1rem;
       }
 
       .banner-text {
@@ -116,6 +121,14 @@
         position: relative;
         line-height: 0;
         cursor: pointer;
+      }
+
+      .video-text-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 0 5vw 0;
+        width: 100%;
       }
 
       /* Video Player Styles */
@@ -284,8 +297,11 @@
         </div>
       </div>
       <div
-        class="content-section"
+        class="content-section video-section"
       >
+      <div class="video-text-container">
+        <div class="banner-text dark sm">Watch Video</div>
+      </div>
         <div class="video-hover-area">
           <video
             class="banner-video"
@@ -299,25 +315,17 @@
       </div>
       <div
       class="content-section"
-    >
-      <div class="banner-text dark split">
-        LIQUIDGL EXPERIEMENTAL, FOR USE WITH VIDEO AND ANIMATIONS FOR REAL
-        TIME REFRACTION.
-      </div>
-    </div>
-      <div
-      class="content-section"
       style="background-image: url(/assets/liquid-bkg-_0001_Comp-183.webp)"
     >
+    <div class="banner-text split">
+      LIQUIDGL EXPERIEMENTAL, FOR USE WITH VIDEO AND ANIMATIONS FOR REAL
+      TIME REFRACTION.
+    </div>
     </div>
       <div
         class="content-section"
         style="background-image: url(/assets/liquid-bkg-_0002_Comp-163.webp)"
       >
-        <div class="banner-text split">
-          LIQUIDGL EXPERIEMENTAL, FOR USE WITH VIDEO AND ANIMATIONS FOR REAL
-          TIME REFRACTION.
-        </div>
       </div>
       <div
         class="content-section"
