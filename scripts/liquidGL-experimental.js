@@ -168,6 +168,7 @@
         uniform int   u_revealType;
         uniform float u_tiltX;
         uniform float u_tiltY;
+        uniform float u_magnify;
 
         float udRoundBox( vec2 p, vec2 b, float r ) {
           return length(max(abs(p)-b+r,0.0))-r;
@@ -198,7 +199,8 @@
           float tiltRefractionScale = 0.05; // Adjustable factor
           vec2 tiltOffset = vec2(tan(radians(u_tiltY)), -tan(radians(u_tiltX))) * tiltRefractionScale;
 
-          vec2 flippedUV = vec2(v_uv.x, 1.0 - v_uv.y);
+          vec2 localUV = (v_uv - 0.5) / u_magnify + 0.5;
+          vec2 flippedUV = vec2(localUV.x, 1.0 - localUV.y);
           vec2 mapped = u_bounds.xy + flippedUV * u_bounds.zw;
           vec2 refracted = mapped + offset - tiltOffset;
 
@@ -295,6 +297,7 @@
         revealType: gl.getUniformLocation(this.program, "u_revealType"),
         tiltX: gl.getUniformLocation(this.program, "u_tiltX"),
         tiltY: gl.getUniformLocation(this.program, "u_tiltY"),
+        magnify: gl.getUniformLocation(this.program, "u_magnify"),
       };
     }
 
@@ -582,6 +585,15 @@
       gl.uniform1i(this.u.specular, lens.options.specular ? 1 : 0);
       gl.uniform1f(this.u.revealProgress, lens._revealProgress || 1.0);
       gl.uniform1i(this.u.revealType, lens.revealTypeIndex || 0);
+
+      const mag = Math.max(
+        0.001,
+        Math.min(
+          3.0,
+          lens.options.magnify !== undefined ? lens.options.magnify : 1.0
+        )
+      );
+      gl.uniform1f(this.u.magnify, mag);
 
       gl.uniform1f(this.u.tiltX, lens.tiltX || 0);
       gl.uniform1f(this.u.tiltY, lens.tiltY || 0);
@@ -1471,6 +1483,7 @@
       reveal: "fade",
       tilt: false,
       tiltFactor: 5,
+      magnify: 1,
       on: {},
     };
     const options = { ...defaults, ...userOptions };
