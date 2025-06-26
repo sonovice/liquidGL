@@ -21,6 +21,22 @@
   }
 
   /* --------------------------------------------------
+   *  Helper : Effective z-index (highest stacking context)
+   * ------------------------------------------------*/
+  function effectiveZ(el) {
+    let node = el;
+    while (node && node !== document.body) {
+      const style = window.getComputedStyle(node);
+      if (style.position !== "static" && style.zIndex !== "auto") {
+        const z = parseInt(style.zIndex, 10);
+        if (!isNaN(z)) return z;
+      }
+      node = node.parentElement;
+    }
+    return 0;
+  }
+
+  /* --------------------------------------------------
    *  WebGL helpers
    * ------------------------------------------------*/
   function compileShader(gl, type, src) {
@@ -600,7 +616,14 @@
 
       const snapRect = this.snapshotTarget.getBoundingClientRect();
 
+      const maxLensZ = this._getMaxLensZ();
+
       this._videoNodes.forEach((vid) => {
+        // Exclude any video whose effective z-index is >= lens threshold
+        if (effectiveZ(vid) >= maxLensZ) {
+          return;
+        }
+
         if (this._isIgnored(vid)) return;
 
         if (vid.readyState < 2) return;
@@ -729,7 +752,14 @@
         this._compositeCtx = canvas.getContext("2d", { alpha: true });
       }
 
+      const maxLensZ = this._getMaxLensZ();
+
       captureTargets.forEach(({ el, meta }) => {
+        // Exclude any element above the lens in stacking order.
+        if (effectiveZ(el) >= maxLensZ) {
+          return;
+        }
+
         if (meta._capturing) return;
         if (!document.contains(el)) return;
 
@@ -899,6 +929,16 @@
       }
 
       return matrix;
+    }
+
+    /* ----------------------------- */
+    _getMaxLensZ() {
+      let maxZ = 0;
+      this.lenses.forEach((ln) => {
+        const z = effectiveZ(ln.el);
+        if (z > maxZ) maxZ = z;
+      });
+      return maxZ;
     }
 
     /* ----------------------------- */
