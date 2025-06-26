@@ -63,7 +63,7 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 1rem;
+        gap: 2rem;
       }
 
       .banner-text {
@@ -79,10 +79,24 @@
 
       .banner-text.xl {
         font-size: 10vw;
+        letter-spacing: -0.025em;
+        text-transform: none;
+        font-weight: 700;
       }
+
       .banner-text.sm {
         font-size: 2vw;
       }
+
+      .banner-text.xs {
+        font-size: 1vw;
+        letter-spacing: 0.05em;
+      }
+
+      .banner-text.dark {
+        color: #333333;
+      }
+
       .banner-video {
         width: 100%;
         height: auto;
@@ -111,12 +125,14 @@
       >
         <div class="banner-text-container">
           <div class="banner-text sm">Introducing</div>
-          <div class="banner-text xl">LIQUIDGL</div>
+          <div class="banner-text xl">liquidGL</div>
+          <div class="banner-text xs">
+          </br></br>A real-time liquid glass effect for the web</br></br>Built with love by NaughtyDuk©
+          </div>
         </div>
       </div>
       <div
         class="content-section"
-        style="background-image: url(/assets/liquid-bkg-_0001_Comp-183.webp)"
       >
         <video
           class="banner-video"
@@ -127,6 +143,19 @@
           playsinline
         ></video>
       </div>
+      <div
+      class="content-section"
+    >
+      <div class="banner-text dark split">
+        LIQUIDGL EXPERIEMENTAL, FOR USE WITH VIDEO AND ANIMATIONS FOR REAL
+        TIME REFRACTION.
+      </div>
+    </div>
+      <div
+      class="content-section"
+      style="background-image: url(/assets/liquid-bkg-_0001_Comp-183.webp)"
+    >
+    </div>
       <div
         class="content-section"
         style="background-image: url(/assets/liquid-bkg-_0002_Comp-163.webp)"
@@ -201,6 +230,7 @@
           glassEffect = LiquidGL({
             target: ".shape",
             snapshot: "body",
+            resolution: 2,
             refraction: 0.026,
             bevelDepth: 0.119,
             bevelWidth: 0.057,
