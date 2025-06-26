@@ -471,10 +471,16 @@
           folder
             .add(first.options, "specular")
             .onChange((v) => sync("specular", v));
-          folder.add(first.options, "tilt").onChange((v) => sync("tilt", v));
+          folder
+            .add(first.options, "tilt")
+            .onChange((v) => lensArr.forEach((ln) => ln.setTilt(v)));
           folder
             .add(first.options, "tiltFactor", 0, 25, 0.1)
             .onChange((v) => sync("tiltFactor", v));
+          folder
+            .add(first.options, "magnify", 0, 3, 0.01)
+            .name("Magnify")
+            .onChange((v) => sync("magnify", v));
           folder
             .add(first.options, "shadow")
             .name("Shadow")

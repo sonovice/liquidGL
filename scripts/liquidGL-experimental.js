@@ -1199,9 +1199,12 @@
     }
 
     /* ----------------------------- */
-
     _bindTiltHandlers() {
       if (this._tiltHandlersBound) return;
+
+      if (this._savedTransform === undefined) {
+        this._savedTransform = this.el.style.transform;
+      }
 
       const getMaxTilt = () =>
         Number.isFinite(this.options.tiltFactor) ? this.options.tiltFactor : 5;
@@ -1409,7 +1412,10 @@
         this._docPointerMove = null;
       }
       this._tiltHandlersBound = false;
-      this.el.style.transform = "";
+
+      // Restore element transform to its pre-tilt value (important for layouts that rely on scale etc.)
+      this.el.style.transform = this._savedTransform || "";
+
       this.renderer.render();
     }
 
