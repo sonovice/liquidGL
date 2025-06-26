@@ -109,6 +109,149 @@
       .split {
         visibility: hidden;
       }
+
+      /* Video Player Styles */
+      .play-icon {
+        position: fixed;
+        width: 80px;
+        height: 80px;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+        z-index: 10;
+      }
+
+      .fullscreen-player {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100svh;
+        background: #111111;
+        z-index: 99999;
+      }
+
+      .fullscreen-player.inactive .custom-controls,
+      .fullscreen-player.inactive .close-btn {
+        opacity: 0;
+      }
+
+      .fullscreen-player video {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+
+      .close-btn {
+        position: absolute;
+        top: 3vw;
+        right: 3vw;
+        width: 30px;
+        height: 30px;
+        cursor: pointer;
+        z-index: 100000;
+        mix-blend-mode: difference;
+      }
+
+      .close-btn:before,
+      .close-btn:after {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 50%;
+        width: 100%;
+        height: 2px;
+        background: #fff;
+        transform-origin: center;
+      }
+
+      .close-btn:before {
+        transform: translateY(-50%) rotate(45deg);
+      }
+
+      .close-btn:after {
+        transform: translateY(-50%) rotate(-45deg);
+      }
+
+      .close-btn:focus-visible {
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.7);
+      }
+
+      /* Custom Controls Container */
+      .custom-controls {
+        position: absolute;
+        bottom: 3vw;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+        max-width: 800px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 10px 15px 10px 10px;
+        border-radius: 10px;
+        background: #e8e8e8;
+        transition: opacity 0.4s ease;
+        mix-blend-mode: exclusion;
+      }
+
+      /* Play/Pause Button */
+      .play-pause-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        width: 24px;
+        height: 24px;
+        position: relative;
+        outline: none;
+        flex-shrink: 0;
+      }
+
+      /* Play icon (triangle) */
+      .play-pause-btn::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 0;
+        height: 0;
+        border-top: 8px solid transparent;
+        border-bottom: 8px solid transparent;
+        border-left: 14px solid #333333;
+        transition: all 0.2s ease;
+      }
+
+      /* Pause icon (two bars) */
+      .play-pause-btn.playing::before {
+        border-style: double;
+        border-width: 0 0 0 14px;
+        border-color: #333333;
+        height: 16px;
+        width: 6px;
+        border-left-style: solid;
+        border-right-style: solid;
+        border-left-width: 5px;
+        border-right-width: 5px;
+        transform: translate(-50%, -50%);
+      }
+
+      /* Progress Bar */
+      .progress-bar-container {
+        flex-grow: 1;
+        height: 6px;
+        background: #cdcdcd;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+
+      .progress-bar-fill {
+        width: 0;
+        height: 100%;
+        border-radius: 3px;
+        background: #333333;
+      }
     </style>
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
@@ -182,6 +325,28 @@
 
     <!-- Single lens shape -->
     <div class="shape"></div>
+
+    <!-- Fullscreen Video Player -->
+    <div class="fullscreen-player">
+      <div
+        class="close-btn"
+        tabindex="0"
+        role="button"
+        aria-label="Close video player"
+      ></div>
+      <video src="/assets/liquidGlass-Full-Promo25fps-OPT.mp4"></video>
+      <div class="custom-controls">
+        <button
+          class="play-pause-btn"
+          role="button"
+          aria-label="Play video"
+        ></button>
+        <div class="progress-bar-container">
+          <div class="progress-bar-fill"></div>
+        </div>
+      </div>
+    </div>
+    <img src="/assets/play-icon.svg" class="play-icon" alt="Play" />
 
     <!-- Scripts -->
     <script src="/scripts/html2canvas.js"></script>
@@ -307,6 +472,182 @@
               window.__LiquidGLRenderer__.render();
           });
           gsap.ticker.lagSmoothing(0);
+        });
+      });
+    </script>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        // Select elements without modifying existing HTML
+        const videoTrigger = document.querySelector(".banner-video").parentElement;
+        const playIcon = document.querySelector(".play-icon");
+        const fullscreenPlayer = document.querySelector(".fullscreen-player");
+        const fullscreenVideo = fullscreenPlayer.querySelector("video");
+        const closeBtn = document.querySelector(".close-btn");
+
+        // New custom controls elements
+        const customControls = document.querySelector(".custom-controls");
+        const playPauseBtn = document.querySelector(".play-pause-btn");
+        const progressBarContainer = document.querySelector(
+          ".progress-bar-container"
+        );
+        const progressBarFill = document.querySelector(".progress-bar-fill");
+
+        if (!videoTrigger) return;
+
+        // Style the trigger to indicate it's clickable
+        videoTrigger.style.cursor = "pointer";
+
+        // --- GSAP Animations and Initial States ---
+        gsap.set(playIcon, {
+          scale: 0.5,
+          autoAlpha: 0,
+          xPercent: -50,
+          yPercent: -50,
+        });
+
+        gsap.set(fullscreenPlayer, {
+          xPercent: -100,
+          visibility: "hidden",
+        });
+
+        // --- Player Logic ---
+        let inactivityTimer;
+
+        const hideControls = () => {
+          if (!fullscreenVideo.paused) {
+            fullscreenPlayer.classList.add("inactive");
+          }
+        };
+
+        const resetInactivityTimer = () => {
+          fullscreenPlayer.classList.remove("inactive");
+          clearTimeout(inactivityTimer);
+          inactivityTimer = setTimeout(hideControls, 3000); // Hide after 3 seconds
+        };
+
+        fullscreenPlayer.addEventListener("mousemove", resetInactivityTimer);
+        fullscreenPlayer.addEventListener("touchstart", resetInactivityTimer);
+
+        // Play/Pause
+        const togglePlayPause = () => {
+          if (fullscreenVideo.paused) {
+            fullscreenVideo.play();
+            playPauseBtn.classList.add("playing");
+            playPauseBtn.setAttribute("aria-label", "Pause video");
+            resetInactivityTimer();
+          } else {
+            fullscreenVideo.pause();
+            playPauseBtn.classList.remove("playing");
+            playPauseBtn.setAttribute("aria-label", "Play video");
+            clearTimeout(inactivityTimer); // Keep controls visible when paused
+          }
+        };
+
+        playPauseBtn.addEventListener("click", togglePlayPause);
+        fullscreenVideo.addEventListener("click", (e) => {
+          // Prevent video click from propagating to elements behind it
+          e.stopPropagation();
+          // only toggle play if the click is on the video itself, not the controls
+          if (e.target === fullscreenVideo) {
+            togglePlayPause();
+          }
+        });
+
+        // Progress bar
+        fullscreenVideo.addEventListener("timeupdate", () => {
+          const progress =
+            (fullscreenVideo.currentTime / fullscreenVideo.duration) * 100;
+          gsap.to(progressBarFill, {
+            width: `${progress}%`,
+            duration: 0.1,
+            ease: "linear",
+          });
+        });
+
+        // Seek
+        progressBarContainer.addEventListener("click", (e) => {
+          const rect = progressBarContainer.getBoundingClientRect();
+          const clickX = e.clientX - rect.left;
+          const width = rect.width;
+          const newTime = (clickX / width) * fullscreenVideo.duration;
+          fullscreenVideo.currentTime = newTime;
+        });
+
+        // Reset UI when video ends
+        fullscreenVideo.addEventListener("ended", () => {
+          playPauseBtn.classList.remove("playing");
+          playPauseBtn.setAttribute("aria-label", "Play video");
+          fullscreenPlayer.classList.remove("inactive");
+          clearTimeout(inactivityTimer);
+        });
+
+        // --- Event Listeners ---
+
+        // Play icon to follow cursor over the video trigger area
+        videoTrigger.addEventListener("mouseenter", () => {
+          gsap.to(playIcon, { autoAlpha: 1, scale: 1, duration: 0.3 });
+        });
+
+        videoTrigger.addEventListener("mouseleave", () => {
+          gsap.to(playIcon, { autoAlpha: 0, scale: 0.5, duration: 0.3 });
+        });
+
+        videoTrigger.addEventListener("mousemove", (e) => {
+          gsap.to(playIcon, {
+            x: e.clientX,
+            y: e.clientY,
+            duration: 0.4,
+            ease: "power3.out",
+          });
+        });
+
+        // Click trigger to open fullscreen video player
+        videoTrigger.addEventListener("click", () => {
+          gsap.to(fullscreenPlayer, {
+            xPercent: 0,
+            visibility: "visible",
+            duration: 0.8,
+            ease: "expo.inOut",
+            onComplete: () => {
+              fullscreenVideo.play();
+              playPauseBtn.classList.add("playing");
+              playPauseBtn.setAttribute("aria-label", "Pause video");
+              resetInactivityTimer();
+            },
+          });
+        });
+
+        // --- Close logic ---
+        const closePlayer = () => {
+          gsap.to(fullscreenVideo, {
+            volume: 0,
+            duration: 0.5,
+            ease: "linear",
+            onComplete: () => {
+              fullscreenVideo.pause();
+              gsap.to(fullscreenPlayer, {
+                xPercent: -100,
+                duration: 0.8,
+                ease: "expo.inOut",
+                onComplete: () => {
+                  gsap.set(fullscreenPlayer, { visibility: "hidden" });
+                  fullscreenVideo.currentTime = 0;
+                  fullscreenVideo.volume = 1; // Reset for next time
+                  playPauseBtn.classList.remove("playing");
+                  playPauseBtn.setAttribute("aria-label", "Play video");
+                  gsap.set(progressBarFill, { width: "0%" });
+                },
+              });
+            },
+          });
+        };
+
+        closeBtn.addEventListener("click", closePlayer);
+        closeBtn.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            closePlayer();
+          }
         });
       });
     </script>
