@@ -987,6 +987,12 @@
       this.el.style.backgroundImage = "none";
       this.el.style.background = "transparent";
 
+      this.el.style.pointerEvents = "none";
+
+      this.el.querySelectorAll("*").forEach((n) => {
+        if (n && n.style) n.style.pointerEvents = "auto";
+      });
+
       this.updateMetrics();
       this.setShadow(this.options.shadow);
       if (this.options.tilt) this._bindTiltHandlers();

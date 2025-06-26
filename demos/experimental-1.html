@@ -113,12 +113,13 @@
       /* Video Player Styles */
       .play-icon {
         position: fixed;
-        width: 80px;
-        height: 80px;
+        width: 10vw;
+        height: 10vw;
         top: 0;
         left: 0;
         pointer-events: none;
         z-index: 10;
+        mix-blend-mode: difference;
       }
 
       .fullscreen-player {
@@ -411,11 +412,6 @@
                   scaleX: 1,
                   duration: 1.2,
                   ease: "expo.out",
-                  onComplete: function () {
-                    gsap.set(lens.el, {
-                      pointerEvents: "auto",
-                    });
-                  },
                 });
               },
             },
