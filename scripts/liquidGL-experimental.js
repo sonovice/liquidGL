@@ -213,7 +213,7 @@
           //    ( we gate it with the same centreBlend already used for offset )
           float antiHalo = (1.0 - centreBlend) * diff;    // 0–15 % radius = 0, fades in by 45 %
 
-          vec4 final    = mix(refrCol, baseCol, antiHalo);
+          vec4 final    = refrCol; // mix(refrCol, baseCol, antiHalo);
 
           // Mask pixels outside rounded rect when using global canvas
           vec2 p_px = (v_uv - 0.5) * u_resolution;

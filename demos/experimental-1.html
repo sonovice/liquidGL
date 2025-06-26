@@ -36,7 +36,7 @@
         transform: scaleX(0);
         transform-origin: center;
         will-change: transform;
-        pointer-events: auto;
+        pointer-events: none;
         z-index: 9999;
       }
 
@@ -185,12 +185,17 @@
             specular: true,
             shadow: true,
             reveal: "fade",
+            tilt: true,
+            tiltFactor: 10,
             on: {
               init: function (lens) {
                 gsap.to(lens.el, {
                   scaleX: 1,
                   duration: 1.2,
                   ease: "expo.out",
+                });
+                gsap.set(lens.el, {
+                  pointerEvents: "auto",
                 });
               },
             },
