@@ -58,6 +58,14 @@
         background-color: #111;
       }
 
+      .banner-text-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+      }
+
       .banner-text {
         width: 100%;
         text-align: center;
@@ -69,6 +77,12 @@
         line-height: 0.85;
       }
 
+      .banner-text.xl {
+        font-size: 10vw;
+      }
+      .banner-text.sm {
+        font-size: 2vw;
+      }
       .banner-video {
         width: 100%;
         height: auto;
@@ -95,9 +109,9 @@
         class="content-section"
         style="background-image: url(/assets/liquid-bkg-_0000_Comp-33.webp)"
       >
-        <div class="banner-text">
-          LIQUIDGL EXPERIEMENTAL, FOR USE WITH VIDEO AND ANIMATIONS FOR REAL
-          TIME REFRACTION.
+        <div class="banner-text-container">
+          <div class="banner-text sm">Introducing</div>
+          <div class="banner-text xl">LIQUIDGL</div>
         </div>
       </div>
       <div
@@ -118,14 +132,19 @@
         style="background-image: url(/assets/liquid-bkg-_0002_Comp-163.webp)"
       >
         <div class="banner-text split">
-          THIS TEXT IS ANIMATED WITH GSAP SPLITTEXT AND REFRACTED IN REAL TIME
-          AS YOU SCROLL.
+          LIQUIDGL EXPERIEMENTAL, FOR USE WITH VIDEO AND ANIMATIONS FOR REAL
+          TIME REFRACTION.
         </div>
       </div>
       <div
         class="content-section"
         style="background-image: url(/assets/liquid-bkg-_0003_Comp-151.webp)"
-      ></div>
+      >
+        <div class="banner-text split">
+          THIS TEXT IS ANIMATED WITH GSAP SPLITTEXT AND REFRACTED IN REAL TIME
+          AS YOU SCROLL.
+        </div>
+      </div>
       <div
         class="content-section"
         style="background-image: url(/assets/liquid-bkg-_0004_Comp-13.webp)"
@@ -153,23 +172,29 @@
         fontsReady.then(() => {
           /* 1. Prepare SplitText first */
           gsap.set(".split", { visibility: "visible" });
-          const split = SplitText.create(".split", {
-            type: "lines",
-            linesClass: "line",
-            mask: "lines",
-          });
+          const allSplitLines = [];
 
-          // Animate lines when the element's top reaches 50% of viewport
-          gsap.from(split.lines, {
-            scrollTrigger: {
-              trigger: ".split",
-              start: "top 50%",
-              toggleActions: "play none none reverse",
-            },
-            duration: 0.8,
-            yPercent: 100,
-            stagger: 0.1,
-            ease: "expo.out",
+          gsap.utils.toArray(".split").forEach((splitEl) => {
+            const split = SplitText.create(splitEl, {
+              type: "lines",
+              linesClass: "line",
+              mask: "lines",
+            });
+
+            // Animate lines when the element's top reaches 50% of viewport
+            gsap.from(split.lines, {
+              scrollTrigger: {
+                trigger: splitEl,
+                start: "top 50%",
+                toggleActions: "play none none reverse",
+              },
+              duration: 0.8,
+              yPercent: 100,
+              stagger: 0.1,
+              ease: "expo.out",
+            });
+
+            allSplitLines.push(...split.lines);
           });
 
           /* 2. Init LiquidGL after SplitText so snapshot matches */
@@ -183,8 +208,8 @@
             specular: true,
             shadow: false,
             reveal: "fade",
-            tilt: true,
-            tiltFactor: 10,
+            tilt: false,
+            tiltFactor: 0,
             on: {
               init: function (lens) {
                 gsap.to(lens.el, {
@@ -202,7 +227,7 @@
           });
 
           /* 3. Register SplitText lines for dirty-rect updates */
-          LiquidGL.registerDynamic(split.lines);
+          LiquidGL.registerDynamic(allSplitLines);
 
           console.log("liquidGL ready!", glassEffect);
 
