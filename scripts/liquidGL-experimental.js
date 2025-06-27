@@ -122,7 +122,6 @@
       this._dynMeta = new WeakMap();
       this._lastDynamicUpdate = 0;
 
-      // Create a single stylesheet for all dynamic hover rules
       const styleEl = document.createElement("style");
       styleEl.id = "liquid-gl-dynamic-styles";
       document.head.appendChild(styleEl);
@@ -180,7 +179,6 @@
           type: "module",
         });
 
-        /* Map job-id → {x,y,w,h} so we know where to blit when result returns */
         this._dynJobs = new Map();
 
         this._dynWorker.onmessage = (e) => {
@@ -201,7 +199,6 @@
             gl.UNSIGNED_BYTE,
             bmp
           );
-          /* bitmap auto-released because we transferred it */
         };
       }
     }
@@ -343,7 +340,6 @@
       gl.enableVertexAttribArray(posLoc);
       gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
 
-      // Cache uniform locations
       this.u = {
         tex: gl.getUniformLocation(this.program, "u_tex"),
         res: gl.getUniformLocation(this.program, "u_resolution"),
@@ -413,7 +409,6 @@
           }
         });
 
-        // Hide dynamic nodes during the main snapshot to create a "clean plate"
         this._dynamicNodes.forEach((node) => {
           const originalDisplay = node.el.style.display;
           node.el.style.display = "none";
@@ -799,11 +794,10 @@
     /* ----------------------------- */
     _updateDynamicNodes() {
       const gl = this.gl;
-      if (!this.texture || !this._dynMeta) return; // Safety check
+      if (!this.texture || !this._dynMeta) return;
       const snapRect = this.snapshotTarget.getBoundingClientRect();
       const maxLensZ = this._getMaxLensZ();
 
-      // Pre-compute lens rectangles to quickly test intersection with dynamic nodes
       const lensRects = this.lenses.map((ln) => ln.rectPx).filter(Boolean);
 
       const rectsIntersect = (a, b) =>
@@ -876,7 +870,7 @@
         }
 
         if (meta.lastCapture) {
-          if (meta.prevDrawRect) {
+          if (meta.prevDrawRect && !(this._workerEnabled && meta._heavyAnim)) {
             const { x, y, w, h } = meta.prevDrawRect;
             if (w > 0 && h > 0) {
               const eraseCanvas = this._compositeCtx.canvas;
@@ -919,7 +913,6 @@
             return;
           }
 
-          // Ignore dynamic elements that are nowhere near a lens – saves work.
           if (!lensRects.some((lr) => rectsIntersect(rect, lr))) {
             meta.prevDrawRect = null;
             return;
@@ -990,7 +983,6 @@
           );
 
           if (this._workerEnabled && meta._heavyAnim) {
-            /* Offload compositing to worker */
             const jobId = `${Date.now()}_${Math.random()}`;
             this._dynJobs.set(jobId, {
               x: drawX,
@@ -999,7 +991,6 @@
               h: drawH,
             });
 
-            /* Build the two small ImageBitmaps we need and post them */
             Promise.all([
               createImageBitmap(
                 this.staticSnapshotCanvas,
@@ -1021,7 +1012,6 @@
                 [snapBmp, dynBmp]
               );
             });
-            /* Done – skip main-thread texSubImage2D for this node */
             meta.prevDrawRect = { x: drawX, y: drawY, w: drawW, h: drawH };
             return;
           }
@@ -1109,9 +1099,7 @@
                 cssText += rule.style.cssText;
               }
             }
-          } catch (e) {
-            /* ignore CORS */
-          }
+          } catch (e) {}
         }
         return cssText;
       };
@@ -1121,7 +1109,6 @@
         if (!m || !m.hoverClassName) return;
 
         el.classList.remove(m.hoverClassName);
-        // Find and delete the rule more robustly
         for (let i = this._dynamicStyleSheet.cssRules.length - 1; i >= 0; i--) {
           const rule = this._dynamicStyleSheet.cssRules[i];
           if (rule.selectorText === `.${m.hoverClassName}`) {
@@ -1162,23 +1149,18 @@
 
       el.addEventListener("mouseleave", handleLeave, { passive: true });
       el.addEventListener("transitionend", setDirty, { passive: true });
-      // When a transition starts, begin a throttled rAF loop so the element is
-      // re-captured while the animation is running.  The loop exits automatically
-      // when we receive the matching transitionend event.
+
       const startRealtime = () => {
         const m = this._dynMeta.get(el);
         if (!m || m._animating) return;
         m._animating = true;
 
-        // Determine if animation affects properties beyond transform/opacity.
-        // Default assumption: light animation (transform/opacity only)
         m._heavyAnim = false;
 
         const step = (ts) => {
           const meta = this._dynMeta.get(el);
           if (!meta || !meta._animating) return;
 
-          // Throttle captures to ~30 fps (every 33 ms) – enough for smoothness
           if (
             meta._heavyAnim &&
             !meta._capturing &&
@@ -1190,7 +1172,6 @@
           if (meta._heavyAnim) {
             meta._rafId = requestAnimationFrame(step);
           } else {
-            // No heavy animation – no need to keep capturing loop running
             meta._rafId = null;
           }
         };
@@ -1205,7 +1186,7 @@
           const wasHeavy = m._heavyAnim;
           m._heavyAnim = true;
           if (m._animating && !wasHeavy && !m._rafId) {
-            m._animating = false; // reset flag to allow restart
+            m._animating = false;
             startRealtime();
           }
         }
@@ -1225,7 +1206,6 @@
       el.addEventListener(
         "animationstart",
         () => {
-          // We don't know which props animate; assume heavy to be safe.
           const m = this._dynMeta.get(el);
           if (m) m._heavyAnim = true;
           startRealtime();
@@ -1242,9 +1222,6 @@
         { passive: true }
       );
 
-      // Modern browsers also emit transitionrun which fires before transitionstart
-      // (original generic listeners replaced by property-aware ones above)
-
       const stopRealtime = () => {
         const m = this._dynMeta.get(el);
         if (!m || !m._animating) return;
@@ -1253,7 +1230,6 @@
           cancelAnimationFrame(m._rafId);
           m._rafId = null;
         }
-        // Ensure final state captured
         m._heavyAnim = false;
         setDirty();
       };
@@ -1264,14 +1240,13 @@
       el.addEventListener("animationcancel", stopRealtime, { passive: true });
 
       /* --------------------------------------------------
-       *  Removal clean-up (replacement for deprecated DOMNodeRemovedFromDocument)
+       *  Removal clean-up
        * --------------------------------------------------*/
       if (typeof MutationObserver !== "undefined") {
         const removalObserver = new MutationObserver(() => {
           if (!document.contains(el)) {
             handleLeave();
             removalObserver.disconnect();
-            // Prune internal caches to avoid leaks
             this._dynamicNodes = this._dynamicNodes.filter((n) => n.el !== el);
             this._dynMeta.delete(el);
           }
@@ -1658,8 +1633,6 @@
       });
 
       /* ----------------------------- */
-      // Pointer-events are disabled on the element, so native enter/move events
-      // never reach it.  We proxy global pointer movements instead.
       this._tiltActive = false;
 
       this._docPointerMove = (e) => {
@@ -1684,7 +1657,6 @@
         }
       };
 
-      // Listen on pointer events so we get mouse + touch in one go.
       document.addEventListener("pointermove", this._docPointerMove, {
         passive: true,
       });
@@ -1707,7 +1679,6 @@
       }
       this._tiltHandlersBound = false;
 
-      // Restore element transform to its pre-tilt value (important for layouts that rely on scale etc.)
       this.el.style.transform = this._savedTransform || "";
 
       this.renderer.render();
@@ -1771,7 +1742,7 @@
    * ------------------------------------------------*/
   window.LiquidGL = function (userOptions = {}) {
     const defaults = {
-      target: ".menu-wrap",
+      target: ".glassify",
       snapshot: "body",
       resolution: 1.0,
       refraction: 0.01,
@@ -1845,7 +1816,6 @@
     const renderer = window.__LiquidGLRenderer__;
     if (!renderer || !renderer.addDynamicElement) return;
     renderer.addDynamicElement(elements);
-    // After registering new elements, the snapshot is stale. Recapture.
     if (renderer.captureSnapshot) {
       renderer.captureSnapshot();
     }
