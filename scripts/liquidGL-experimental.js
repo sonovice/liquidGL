@@ -1258,12 +1258,13 @@
       };
 
       this._smoothReset = () => {
-        document.removeEventListener("mousemove", this._boundCheckLeave);
-
         this.el.style.transition = "transform 0.4s cubic-bezier(0.33,1,0.68,1)";
         this.el.style.transformOrigin = `50% 50%`;
-        this.el.style.transform =
-          "perspective(800px) rotateX(0deg) rotateY(0deg)";
+        const baseRest =
+          this._savedTransform && this._savedTransform !== "none"
+            ? this._savedTransform + " "
+            : "";
+        this.el.style.transform = `${baseRest}perspective(800px) rotateX(0deg) rotateY(0deg)`;
 
         this.tiltX = 0;
         this.tiltY = 0;
@@ -1273,41 +1274,36 @@
           this._mirror.style.transition =
             "transform 0.4s cubic-bezier(0.33, 1, 0.68, 1)";
           this._mirror.style.transformOrigin = this._pivotOrigin || "50% 50%";
-          this._mirror.style.transform =
-            "perspective(800px) rotateX(0deg) rotateY(0deg)";
-          const clean = () => this._destroyMirrorCanvas();
+          this._mirror.style.transform = `${baseRest}perspective(800px) rotateX(0deg) rotateY(0deg)`;
+          const clean = () => {
+            this._destroyMirrorCanvas();
+            this._resetCleanupTimer = null;
+          };
           this._mirror.addEventListener("transitionend", clean, {
             once: true,
           });
-          setTimeout(clean, 350);
+          this._resetCleanupTimer = setTimeout(clean, 350);
         }
 
         if (this._shadowEl) {
           this._shadowEl.style.transition =
             "transform 0.4s cubic-bezier(0.33,1,0.68,1)";
           this._shadowEl.style.transformOrigin = `50% 50%`;
-          this._shadowEl.style.transform =
-            "perspective(800px) rotateX(0deg) rotateY(0deg)";
+          this._shadowEl.style.transform = `${baseRest}perspective(800px) rotateX(0deg) rotateY(0deg)`;
         }
       };
-
-      this._checkLeave = (e) => {
-        const r = this._baseRect;
-        if (!r) return;
-        if (
-          e.clientX < r.left ||
-          e.clientX > r.right ||
-          e.clientY < r.top ||
-          e.clientY > r.bottom
-        ) {
-          this._smoothReset();
-        }
-      };
-      this._boundCheckLeave = this._checkLeave.bind(this);
 
       this._onMouseEnter = (e) => {
-        this._tiltInteracting = false;
+        if (this._resetCleanupTimer) {
+          clearTimeout(this._resetCleanupTimer);
+          this._resetCleanupTimer = null;
+          this._destroyMirrorCanvas();
+          this.el.style.transition = "none";
+          this.el.style.transform = this._savedTransform || "";
+          void this.el.offsetHeight;
+        }
 
+        this._tiltInteracting = false;
         this._createMirrorCanvas();
 
         const r = this._baseRect || this.el.getBoundingClientRect();
@@ -1420,8 +1416,8 @@
     }
 
     _createMirrorCanvas() {
-      if (this._mirror) return;
       this._baseRect = this.el.getBoundingClientRect();
+      if (this._mirror) return;
       this._mirror = document.createElement("canvas");
       Object.assign(this._mirror.style, {
         position: "fixed",
