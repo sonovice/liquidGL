@@ -149,6 +149,61 @@
         0.1,
         Math.min(3.0, snapshotResolution)
       );
+
+      /* --------------------------------------------------
+       *  Inline worker for heavy dynamic nodes
+       * ------------------------------------------------*/
+      this._workerEnabled =
+        typeof OffscreenCanvas !== "undefined" &&
+        typeof Worker !== "undefined" &&
+        typeof ImageBitmap !== "undefined";
+
+      if (this._workerEnabled) {
+        const workerSrc = `
+          /* dynamic-element worker (runs in its own thread) */
+          self.onmessage = async (e) => {
+            const { id, width, height, snap, dyn } = e.data;
+            const off = new OffscreenCanvas(width, height);
+            const ctx = off.getContext('2d');
+
+            // Re-composite the clean snapshot plus the updated element frame
+            ctx.drawImage(snap, 0, 0, width, height);
+            ctx.drawImage(dyn, 0, 0, width, height);
+
+            const bmp = await off.transferToImageBitmap();
+            /* Transfer the bitmap back – zero copy */
+            self.postMessage({ id, bmp }, [bmp]);
+          };
+        `;
+        const blob = new Blob([workerSrc], { type: "application/javascript" });
+        this._dynWorker = new Worker(URL.createObjectURL(blob), {
+          type: "module",
+        });
+
+        /* Map job-id → {x,y,w,h} so we know where to blit when result returns */
+        this._dynJobs = new Map();
+
+        this._dynWorker.onmessage = (e) => {
+          const { id, bmp } = e.data;
+          const meta = this._dynJobs.get(id);
+          if (!meta) return;
+          this._dynJobs.delete(id);
+
+          const { x, y, w, h } = meta;
+          const gl = this.gl;
+          gl.bindTexture(gl.TEXTURE_2D, this.texture);
+          gl.texSubImage2D(
+            gl.TEXTURE_2D,
+            0,
+            x,
+            y,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            bmp
+          );
+          /* bitmap auto-released because we transferred it */
+        };
+      }
     }
 
     /* ----------------------------- */
@@ -934,6 +989,43 @@
             compositeCanvas
           );
 
+          if (this._workerEnabled && meta._heavyAnim) {
+            /* Offload compositing to worker */
+            const jobId = `${Date.now()}_${Math.random()}`;
+            this._dynJobs.set(jobId, {
+              x: drawX,
+              y: drawY,
+              w: drawW,
+              h: drawH,
+            });
+
+            /* Build the two small ImageBitmaps we need and post them */
+            Promise.all([
+              createImageBitmap(
+                this.staticSnapshotCanvas,
+                drawX,
+                drawY,
+                drawW,
+                drawH
+              ),
+              createImageBitmap(meta.lastCapture),
+            ]).then(([snapBmp, dynBmp]) => {
+              this._dynWorker.postMessage(
+                {
+                  id: jobId,
+                  width: drawW,
+                  height: drawH,
+                  snap: snapBmp,
+                  dyn: dynBmp,
+                },
+                [snapBmp, dynBmp]
+              );
+            });
+            /* Done – skip main-thread texSubImage2D for this node */
+            meta.prevDrawRect = { x: drawX, y: drawY, w: drawW, h: drawH };
+            return;
+          }
+
           meta.prevDrawRect = { x: drawX, y: drawY, w: drawW, h: drawH };
         }
       });
@@ -992,6 +1084,7 @@
         _animating: false,
         _rafId: null,
         _lastCaptureTs: 0,
+        _heavyAnim: false,
       };
       this._dynMeta.set(el, meta);
 
@@ -1077,19 +1170,80 @@
         if (!m || m._animating) return;
         m._animating = true;
 
+        // Determine if animation affects properties beyond transform/opacity.
+        // Default assumption: light animation (transform/opacity only)
+        m._heavyAnim = false;
+
         const step = (ts) => {
           const meta = this._dynMeta.get(el);
           if (!meta || !meta._animating) return;
 
           // Throttle captures to ~30 fps (every 33 ms) – enough for smoothness
-          if (!meta._capturing && ts - meta._lastCaptureTs > 33) {
+          if (
+            meta._heavyAnim &&
+            !meta._capturing &&
+            ts - meta._lastCaptureTs > 33
+          ) {
             meta._lastCaptureTs = ts;
             meta.needsRecapture = true;
           }
-          meta._rafId = requestAnimationFrame(step);
+          if (meta._heavyAnim) {
+            meta._rafId = requestAnimationFrame(step);
+          } else {
+            // No heavy animation – no need to keep capturing loop running
+            meta._rafId = null;
+          }
         };
         m._rafId = requestAnimationFrame(step);
       };
+
+      const trackProperty = (prop) => {
+        const m = this._dynMeta.get(el);
+        if (!m) return;
+        const low = (prop || "").toLowerCase();
+        if (!(low.includes("transform") || low.includes("opacity"))) {
+          const wasHeavy = m._heavyAnim;
+          m._heavyAnim = true;
+          if (m._animating && !wasHeavy && !m._rafId) {
+            m._animating = false; // reset flag to allow restart
+            startRealtime();
+          }
+        }
+      };
+
+      const transitionRunHandler = (e) => {
+        trackProperty(e.propertyName);
+        startRealtime();
+      };
+
+      el.addEventListener("transitionrun", transitionRunHandler, {
+        passive: true,
+      });
+      el.addEventListener("transitionstart", transitionRunHandler, {
+        passive: true,
+      });
+      el.addEventListener(
+        "animationstart",
+        () => {
+          // We don't know which props animate; assume heavy to be safe.
+          const m = this._dynMeta.get(el);
+          if (m) m._heavyAnim = true;
+          startRealtime();
+        },
+        { passive: true }
+      );
+
+      el.addEventListener(
+        "animationiteration",
+        () => {
+          const m = this._dynMeta.get(el);
+          if (m) m._heavyAnim = true;
+        },
+        { passive: true }
+      );
+
+      // Modern browsers also emit transitionrun which fires before transitionstart
+      // (original generic listeners replaced by property-aware ones above)
 
       const stopRealtime = () => {
         const m = this._dynMeta.get(el);
@@ -1099,26 +1253,34 @@
           cancelAnimationFrame(m._rafId);
           m._rafId = null;
         }
-        // Ensure final frame is captured
+        // Ensure final state captured
+        m._heavyAnim = false;
         setDirty();
       };
-
-      // Modern browsers also emit transitionrun which fires before transitionstart
-      el.addEventListener("transitionrun", startRealtime, { passive: true });
-      el.addEventListener("transitionstart", startRealtime, { passive: true });
-      el.addEventListener("animationstart", startRealtime, { passive: true });
-      el.addEventListener("animationiteration", startRealtime, {
-        passive: true,
-      });
 
       el.addEventListener("transitionend", stopRealtime, { passive: true });
       el.addEventListener("transitioncancel", stopRealtime, { passive: true });
       el.addEventListener("animationend", stopRealtime, { passive: true });
       el.addEventListener("animationcancel", stopRealtime, { passive: true });
-      // Clean up if the element is removed from the DOM
-      el.addEventListener("DOMNodeRemovedFromDocument", handleLeave, {
-        once: true,
-      });
+
+      /* --------------------------------------------------
+       *  Removal clean-up (replacement for deprecated DOMNodeRemovedFromDocument)
+       * --------------------------------------------------*/
+      if (typeof MutationObserver !== "undefined") {
+        const removalObserver = new MutationObserver(() => {
+          if (!document.contains(el)) {
+            handleLeave();
+            removalObserver.disconnect();
+            // Prune internal caches to avoid leaks
+            this._dynamicNodes = this._dynamicNodes.filter((n) => n.el !== el);
+            this._dynMeta.delete(el);
+          }
+        });
+        removalObserver.observe(document.body, {
+          childList: true,
+          subtree: true,
+        });
+      }
 
       this._dynamicNodes.push({ el });
     }
