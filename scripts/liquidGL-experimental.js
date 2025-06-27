@@ -76,7 +76,11 @@
       this.canvas.setAttribute("data-liquid-ignore", "");
       document.body.appendChild(this.canvas);
 
-      const ctxAttribs = { alpha: true, premultipliedAlpha: true };
+      const ctxAttribs = {
+        alpha: true,
+        premultipliedAlpha: true,
+        preserveDrawingBuffer: true,
+      };
       this.gl =
         this.canvas.getContext("webgl2", ctxAttribs) ||
         this.canvas.getContext("webgl", ctxAttribs) ||
@@ -638,33 +642,34 @@
       const maxLensZ = this._getMaxLensZ();
 
       this._videoNodes.forEach((vid) => {
-        // Exclude any video whose effective z-index is >= lens threshold
         if (effectiveZ(vid) >= maxLensZ) {
           return;
         }
 
-        if (this._isIgnored(vid)) return;
-
-        if (vid.readyState < 2) return;
+        if (this._isIgnored(vid) || vid.readyState < 2) return;
 
         const rect = vid.getBoundingClientRect();
-
         const texX = (rect.left - snapRect.left) * this.scaleFactor;
         const texY = (rect.top - snapRect.top) * this.scaleFactor;
         const texW = rect.width * this.scaleFactor;
         const texH = rect.height * this.scaleFactor;
 
-        if (texW === 0 || texH === 0) return;
+        const drawW = Math.round(texW);
+        const drawH = Math.round(texH);
 
-        if (this._tmpCanvas.width !== texW || this._tmpCanvas.height !== texH) {
-          this._tmpCanvas.width = texW;
-          this._tmpCanvas.height = texH;
+        if (drawW <= 0 || drawH <= 0) return;
+
+        if (
+          this._tmpCanvas.width !== drawW ||
+          this._tmpCanvas.height !== drawH
+        ) {
+          this._tmpCanvas.width = drawW;
+          this._tmpCanvas.height = drawH;
         }
 
         try {
           this._tmpCtx.save();
-
-          this._tmpCtx.clearRect(0, 0, texW, texH);
+          this._tmpCtx.clearRect(0, 0, drawW, drawH);
 
           const style = window.getComputedStyle(vid);
           const scaledRadii = {
@@ -675,7 +680,12 @@
           };
 
           if (Object.values(scaledRadii).some((r) => r > 0)) {
-            this._createRoundedRectPath(this._tmpCtx, texW, texH, scaledRadii);
+            this._createRoundedRectPath(
+              this._tmpCtx,
+              drawW,
+              drawH,
+              scaledRadii
+            );
             this._tmpCtx.clip();
           }
 
@@ -687,13 +697,14 @@
             texH,
             0,
             0,
-            texW,
-            texH
+            drawW,
+            drawH
           );
 
-          this._tmpCtx.drawImage(vid, 0, 0, texW, texH);
+          this._tmpCtx.drawImage(vid, 0, 0, drawW, drawH);
           this._tmpCtx.restore();
         } catch (e) {
+          console.warn("LiquidGL: Error drawing video frame", e);
           return;
         }
 
@@ -701,8 +712,8 @@
         const drawY = Math.round(texY);
 
         if (
-          drawX + texW > this.textureWidth ||
-          drawY + texH > this.textureHeight ||
+          drawX + drawW > this.textureWidth ||
+          drawY + drawH > this.textureHeight ||
           drawX < 0 ||
           drawY < 0
         ) {
