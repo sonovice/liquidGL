@@ -159,9 +159,21 @@
       }
 
       .fullscreen-player video {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
+        width: 100vw;
+        height: 100vh;
+        object-fit: cover;
+      }
+
+      @media (max-width: 768px) {
+        .fullscreen-player video {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        }
+      }
+
+      .hero-video {
+        z-index: -1;
       }
 
       .close-btn {
@@ -284,10 +296,23 @@
   </head>
   <body>
     <div class="main-content">
-      <div
-        class="content-section"
-        style="background-image: url(/assets/liquid-bkg-_0000_Comp-33.webp)"
-      >
+      <div class="content-section">
+        <video class="hero-video"
+          autoplay
+          loop
+          muted
+          playsinline
+          style="
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          "
+        >
+          <source src="/assets/loop-opt.mp4" type="video/mp4" />
+        </video>
         <div class="banner-text-container">
           <div class="banner-text sm">Introducing</div>
           <div class="banner-text xl">liquidGL</div>
@@ -445,6 +470,7 @@
 
           /* 3. Register SplitText lines for dirty-rect updates */
           LiquidGL.registerDynamic(allSplitLines);
+          LiquidGL.registerDynamic(".banner-text-container");
 
           console.log("liquidGL ready!", glassEffect);
 

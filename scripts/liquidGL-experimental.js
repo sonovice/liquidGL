@@ -842,8 +842,13 @@
               meta.lastAnimationState = currentState;
 
               const compositeCanvas = this._compositeCtx.canvas;
-              compositeCanvas.width = drawW;
-              compositeCanvas.height = drawH;
+              if (
+                compositeCanvas.width !== drawW ||
+                compositeCanvas.height !== drawH
+              ) {
+                compositeCanvas.width = drawW;
+                compositeCanvas.height = drawH;
+              }
 
               this._compositeCtx.drawImage(
                 this.staticSnapshotCanvas,
@@ -856,6 +861,33 @@
                 drawW,
                 drawH
               );
+
+              this._videoNodes.forEach((vid) => {
+                if (effectiveZ(vid) >= maxLensZ) return;
+                const vidRect = vid.getBoundingClientRect();
+
+                // Simple intersection check
+                if (
+                  rect.left < vidRect.right &&
+                  rect.right > vidRect.left &&
+                  rect.top < vidRect.bottom &&
+                  rect.bottom > vidRect.top
+                ) {
+                  const xInComposite =
+                    (vidRect.left - rect.left) * this.scaleFactor;
+                  const yInComposite =
+                    (vidRect.top - rect.top) * this.scaleFactor;
+                  const wInComposite = vidRect.width * this.scaleFactor;
+                  const hInComposite = vidRect.height * this.scaleFactor;
+                  this._compositeCtx.drawImage(
+                    vid,
+                    xInComposite,
+                    yInComposite,
+                    wInComposite,
+                    hInComposite
+                  );
+                }
+              });
 
               this._compositeCtx.drawImage(cv, 0, 0, drawW, drawH);
 
@@ -897,6 +929,30 @@
             drawW,
             drawH
           );
+
+          this._videoNodes.forEach((vid) => {
+            if (effectiveZ(vid) >= maxLensZ) return;
+            const vidRect = vid.getBoundingClientRect();
+            if (
+              rect.left < vidRect.right &&
+              rect.right > vidRect.left &&
+              rect.top < vidRect.bottom &&
+              rect.bottom > vidRect.top
+            ) {
+              const xInComposite =
+                (vidRect.left - rect.left) * this.scaleFactor;
+              const yInComposite = (vidRect.top - rect.top) * this.scaleFactor;
+              const wInComposite = vidRect.width * this.scaleFactor;
+              const hInComposite = vidRect.height * this.scaleFactor;
+              this._compositeCtx.drawImage(
+                vid,
+                xInComposite,
+                yInComposite,
+                wInComposite,
+                hInComposite
+              );
+            }
+          });
 
           this._compositeCtx.translate(drawW / 2, drawH / 2);
           if (currentState.transform !== "none") {
