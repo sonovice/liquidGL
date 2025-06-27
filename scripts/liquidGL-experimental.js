@@ -111,6 +111,12 @@
         new ResizeObserver(onResize).observe(this.snapshotTarget);
       }
 
+      /* --------------------------------------------------
+       *  Dynamic DOM elements (non-video, e.g. animating text)
+       * ------------------------------------------------*/
+      this._dynamicNodes = [];
+      this._lastDynamicUpdate = 0;
+
       this._resizeCanvas();
       this.captureSnapshot();
 
@@ -127,12 +133,6 @@
       this._tmpCtx = this._tmpCanvas.getContext("2d");
 
       this.canvas.style.opacity = "0";
-
-      /* --------------------------------------------------
-       *  Dynamic DOM elements (non-video, e.g. animating text)
-       * ------------------------------------------------*/
-      this._dynamicNodes = [];
-      this._lastDynamicUpdate = 0;
 
       this._snapshotResolution = Math.max(
         0.1,
