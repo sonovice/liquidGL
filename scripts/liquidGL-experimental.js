@@ -748,6 +748,15 @@
       const snapRect = this.snapshotTarget.getBoundingClientRect();
       const maxLensZ = this._getMaxLensZ();
 
+      // Pre-compute lens rectangles to quickly test intersection with dynamic nodes
+      const lensRects = this.lenses.map((ln) => ln.rectPx).filter(Boolean);
+
+      const rectsIntersect = (a, b) =>
+        a.left < b.left + b.width &&
+        a.left + a.width > b.left &&
+        a.top < b.top + b.height &&
+        a.top + a.height > b.top;
+
       if (!this._compositeCtx) {
         this._compositeCtx = document.createElement("canvas").getContext("2d");
       }
@@ -851,6 +860,12 @@
             rect.width === 0 ||
             rect.height === 0
           ) {
+            meta.prevDrawRect = null;
+            return;
+          }
+
+          // Ignore dynamic elements that are nowhere near a lens – saves work.
+          if (!lensRects.some((lr) => rectsIntersect(rect, lr))) {
             meta.prevDrawRect = null;
             return;
           }
@@ -974,6 +989,9 @@
         lastCapture: null,
         needsRecapture: true,
         hoverClassName: null,
+        _animating: false,
+        _rafId: null,
+        _lastCaptureTs: 0,
       };
       this._dynMeta.set(el, meta);
 
@@ -1051,6 +1069,52 @@
 
       el.addEventListener("mouseleave", handleLeave, { passive: true });
       el.addEventListener("transitionend", setDirty, { passive: true });
+      // When a transition starts, begin a throttled rAF loop so the element is
+      // re-captured while the animation is running.  The loop exits automatically
+      // when we receive the matching transitionend event.
+      const startRealtime = () => {
+        const m = this._dynMeta.get(el);
+        if (!m || m._animating) return;
+        m._animating = true;
+
+        const step = (ts) => {
+          const meta = this._dynMeta.get(el);
+          if (!meta || !meta._animating) return;
+
+          // Throttle captures to ~30 fps (every 33 ms) – enough for smoothness
+          if (!meta._capturing && ts - meta._lastCaptureTs > 33) {
+            meta._lastCaptureTs = ts;
+            meta.needsRecapture = true;
+          }
+          meta._rafId = requestAnimationFrame(step);
+        };
+        m._rafId = requestAnimationFrame(step);
+      };
+
+      const stopRealtime = () => {
+        const m = this._dynMeta.get(el);
+        if (!m || !m._animating) return;
+        m._animating = false;
+        if (m._rafId) {
+          cancelAnimationFrame(m._rafId);
+          m._rafId = null;
+        }
+        // Ensure final frame is captured
+        setDirty();
+      };
+
+      // Modern browsers also emit transitionrun which fires before transitionstart
+      el.addEventListener("transitionrun", startRealtime, { passive: true });
+      el.addEventListener("transitionstart", startRealtime, { passive: true });
+      el.addEventListener("animationstart", startRealtime, { passive: true });
+      el.addEventListener("animationiteration", startRealtime, {
+        passive: true,
+      });
+
+      el.addEventListener("transitionend", stopRealtime, { passive: true });
+      el.addEventListener("transitioncancel", stopRealtime, { passive: true });
+      el.addEventListener("animationend", stopRealtime, { passive: true });
+      el.addEventListener("animationcancel", stopRealtime, { passive: true });
       // Clean up if the element is removed from the DOM
       el.addEventListener("DOMNodeRemovedFromDocument", handleLeave, {
         once: true,
