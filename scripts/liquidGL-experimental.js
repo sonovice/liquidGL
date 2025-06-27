@@ -119,7 +119,14 @@
        *  Dynamic DOM elements (non-video, e.g. animating text)
        * ------------------------------------------------*/
       this._dynamicNodes = [];
+      this._dynMeta = new WeakMap();
       this._lastDynamicUpdate = 0;
+
+      // Create a single stylesheet for all dynamic hover rules
+      const styleEl = document.createElement("style");
+      styleEl.id = "liquid-gl-dynamic-styles";
+      document.head.appendChild(styleEl);
+      this._dynamicStyleSheet = styleEl.sheet;
 
       this._resizeCanvas();
       this.captureSnapshot();
@@ -737,291 +744,171 @@
     /* ----------------------------- */
     _updateDynamicNodes() {
       const gl = this.gl;
+      if (!this.texture || !this._dynMeta) return; // Safety check
       const snapRect = this.snapshotTarget.getBoundingClientRect();
-
-      const parentGroups = new Map();
-      this._dynamicNodes.forEach((n) => {
-        const p = n.el.parentElement;
-        if (!p || p === this.snapshotTarget) return;
-        if (!parentGroups.has(p)) parentGroups.set(p, []);
-        parentGroups.get(p).push(n);
-      });
-
-      const processedChildren = new Set();
-      const captureTargets = [];
-
-      if (!this._dynMeta) this._dynMeta = new WeakMap();
-      const getMeta = (el) => {
-        let m = this._dynMeta.get(el);
-        if (!m) {
-          m = {
-            _capturing: false,
-            prevDrawRect: null,
-            initialCapture: null,
-            lastAnimationState: null,
-          };
-          this._dynMeta.set(el, m);
-        }
-        return m;
-      };
-
-      parentGroups.forEach((children, parentEl) => {
-        if (children.length > 1) {
-          captureTargets.push({ el: parentEl, meta: getMeta(parentEl) });
-          children.forEach((c) => processedChildren.add(c));
-        }
-      });
-
-      this._dynamicNodes.forEach((n) => {
-        if (processedChildren.has(n)) return;
-        captureTargets.push({ el: n.el, meta: n });
-      });
-
-      if (!this._compositeCtx) {
-        const canvas = document.createElement("canvas");
-        this._compositeCtx = canvas.getContext("2d", { alpha: true });
-      }
-
       const maxLensZ = this._getMaxLensZ();
 
-      captureTargets.forEach(({ el, meta }) => {
-        // --- ERASE previous frame's drawing to prevent ghosting ---
-        if (meta.prevDrawRect) {
-          const { x, y, w, h } = meta.prevDrawRect;
-          if (w > 0 && h > 0) {
-            const eraseCanvas = this._compositeCtx.canvas;
-            if (eraseCanvas.width !== w || eraseCanvas.height !== h) {
-              eraseCanvas.width = w;
-              eraseCanvas.height = h;
-            }
-            this._compositeCtx.drawImage(
-              this.staticSnapshotCanvas,
-              x,
-              y,
-              w,
-              h,
-              0,
-              0,
-              w,
-              h
-            );
-            gl.bindTexture(gl.TEXTURE_2D, this.texture);
-            gl.texSubImage2D(
-              gl.TEXTURE_2D,
-              0,
-              x,
-              y,
-              gl.RGBA,
-              gl.UNSIGNED_BYTE,
-              eraseCanvas
+      if (!this._compositeCtx) {
+        this._compositeCtx = document.createElement("canvas").getContext("2d");
+      }
+
+      const compositeVideos = (compositeCtx, dynamicElRect) => {
+        this._videoNodes.forEach((vid) => {
+          if (effectiveZ(vid) >= maxLensZ) return;
+          const vidRect = vid.getBoundingClientRect();
+
+          if (
+            dynamicElRect.left < vidRect.right &&
+            dynamicElRect.right > vidRect.left &&
+            dynamicElRect.top < vidRect.bottom &&
+            dynamicElRect.bottom > vidRect.top
+          ) {
+            const xInComposite =
+              (vidRect.left - dynamicElRect.left) * this.scaleFactor;
+            const yInComposite =
+              (vidRect.top - dynamicElRect.top) * this.scaleFactor;
+            const wInComposite = vidRect.width * this.scaleFactor;
+            const hInComposite = vidRect.height * this.scaleFactor;
+            compositeCtx.drawImage(
+              vid,
+              xInComposite,
+              yInComposite,
+              wInComposite,
+              hInComposite
             );
           }
-        }
+        });
+      };
 
-        // Exclude any element above the lens in stacking order.
-        if (effectiveZ(el) >= maxLensZ) {
-          // Still need to clear its last rect if it moves above the lens
-          meta.prevDrawRect = null;
-          return;
-        }
+      this._dynamicNodes.forEach((node) => {
+        const el = node.el;
+        const meta = this._dynMeta.get(el);
+        if (!meta) return;
 
-        if (meta._capturing) return;
-        if (!document.contains(el)) return;
-
-        const rect = el.getBoundingClientRect();
-
-        const isInViewport =
-          rect.bottom > 0 &&
-          rect.top < window.innerHeight &&
-          rect.right > 0 &&
-          rect.left < window.innerWidth;
-
-        if (!isInViewport) {
-          return;
-        }
-
-        const texX = (rect.left - snapRect.left) * this.scaleFactor;
-        const texY = (rect.top - snapRect.top) * this.scaleFactor;
-        const texW = rect.width * this.scaleFactor;
-        const texH = rect.height * this.scaleFactor;
-
-        const drawX = Math.round(texX);
-        const drawY = Math.round(texY);
-        const drawW = Math.round(texW);
-        const drawH = Math.round(texH);
-
-        if (
-          drawX + drawW > this.textureWidth ||
-          drawY + drawH > this.textureHeight ||
-          drawX < 0 ||
-          drawY < 0
-        ) {
-          return;
-        }
-
-        const style = window.getComputedStyle(el);
-        const currentState = {
-          transform: style.transform,
-          opacity: style.opacity,
-          filter: style.filter,
-        };
-
-        const needsFullCapture =
-          !meta.initialCapture ||
-          !meta.prevDrawRect ||
-          meta.prevDrawRect.w !== drawW ||
-          meta.prevDrawRect.h !== drawH;
-
-        if (needsFullCapture) {
+        if (meta.needsRecapture && !meta._capturing) {
           meta._capturing = true;
 
           html2canvas(el, {
             backgroundColor: null,
-            width: rect.width,
-            height: rect.height,
             scale: this.scaleFactor,
             useCORS: true,
             removeContainer: true,
-            scrollX: 0,
-            scrollY: 0,
             logging: false,
             ignoreElements: (n) =>
               n.tagName === "CANVAS" || n.hasAttribute("data-liquid-ignore"),
           })
             .then((cv) => {
-              if (!this.texture || !this.staticSnapshotCanvas) return;
-
-              meta.initialCapture = cv;
-              meta.lastAnimationState = currentState;
-
-              const compositeCanvas = this._compositeCtx.canvas;
-              if (
-                compositeCanvas.width !== drawW ||
-                compositeCanvas.height !== drawH
-              ) {
-                compositeCanvas.width = drawW;
-                compositeCanvas.height = drawH;
+              if (cv.width > 0 && cv.height > 0) {
+                meta.lastCapture = cv;
+                meta.needsRecapture = false;
               }
-
-              this._compositeCtx.drawImage(
-                this.staticSnapshotCanvas,
-                texX,
-                texY,
-                texW,
-                texH,
-                0,
-                0,
-                drawW,
-                drawH
-              );
-
-              this._videoNodes.forEach((vid) => {
-                if (effectiveZ(vid) >= maxLensZ) return;
-                const vidRect = vid.getBoundingClientRect();
-
-                // Simple intersection check
-                if (
-                  rect.left < vidRect.right &&
-                  rect.right > vidRect.left &&
-                  rect.top < vidRect.bottom &&
-                  rect.bottom > vidRect.top
-                ) {
-                  const xInComposite =
-                    (vidRect.left - rect.left) * this.scaleFactor;
-                  const yInComposite =
-                    (vidRect.top - rect.top) * this.scaleFactor;
-                  const wInComposite = vidRect.width * this.scaleFactor;
-                  const hInComposite = vidRect.height * this.scaleFactor;
-                  this._compositeCtx.drawImage(
-                    vid,
-                    xInComposite,
-                    yInComposite,
-                    wInComposite,
-                    hInComposite
-                  );
-                }
-              });
-
-              this._compositeCtx.drawImage(cv, 0, 0, drawW, drawH);
-
-              gl.bindTexture(gl.TEXTURE_2D, this.texture);
-              gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-              gl.texSubImage2D(
-                gl.TEXTURE_2D,
-                0,
-                drawX,
-                drawY,
-                gl.RGBA,
-                gl.UNSIGNED_BYTE,
-                compositeCanvas
-              );
-
-              meta.prevDrawRect = { x: drawX, y: drawY, w: drawW, h: drawH };
+            })
+            .catch((e) => {
+              console.error("LiquidGL: Dynamic element capture failed.", e);
             })
             .finally(() => {
               meta._capturing = false;
             });
-        } else if (meta.initialCapture && meta.lastAnimationState) {
+        }
+
+        if (meta.lastCapture) {
+          if (meta.prevDrawRect) {
+            const { x, y, w, h } = meta.prevDrawRect;
+            if (w > 0 && h > 0) {
+              const eraseCanvas = this._compositeCtx.canvas;
+              if (eraseCanvas.width !== w || eraseCanvas.height !== h) {
+                eraseCanvas.width = w;
+                eraseCanvas.height = h;
+              }
+              this._compositeCtx.drawImage(
+                this.staticSnapshotCanvas,
+                x,
+                y,
+                w,
+                h,
+                0,
+                0,
+                w,
+                h
+              );
+              gl.bindTexture(gl.TEXTURE_2D, this.texture);
+              gl.texSubImage2D(
+                gl.TEXTURE_2D,
+                0,
+                x,
+                y,
+                gl.RGBA,
+                gl.UNSIGNED_BYTE,
+                eraseCanvas
+              );
+            }
+          }
+
+          const rect = el.getBoundingClientRect();
+          if (
+            effectiveZ(el) >= maxLensZ ||
+            !document.contains(el) ||
+            rect.width === 0 ||
+            rect.height === 0
+          ) {
+            meta.prevDrawRect = null;
+            return;
+          }
+
+          const texX = (rect.left - snapRect.left) * this.scaleFactor;
+          const texY = (rect.top - snapRect.top) * this.scaleFactor;
+          const drawW = Math.round(rect.width * this.scaleFactor);
+          const drawH = Math.round(rect.height * this.scaleFactor);
+          const drawX = Math.round(texX);
+          const drawY = Math.round(texY);
+
+          if (
+            drawW <= 0 ||
+            drawH <= 0 ||
+            drawX + drawW > this.textureWidth ||
+            drawY + drawH > this.textureHeight ||
+            drawX < 0 ||
+            drawY < 0
+          )
+            return;
+
           const compositeCanvas = this._compositeCtx.canvas;
-          compositeCanvas.width = drawW;
-          compositeCanvas.height = drawH;
-
-          this._compositeCtx.save();
-
-          this._compositeCtx.setTransform(1, 0, 0, 1, 0, 0);
+          if (
+            compositeCanvas.width !== drawW ||
+            compositeCanvas.height !== drawH
+          ) {
+            compositeCanvas.width = drawW;
+            compositeCanvas.height = drawH;
+          }
           this._compositeCtx.clearRect(0, 0, drawW, drawH);
 
           this._compositeCtx.drawImage(
             this.staticSnapshotCanvas,
             texX,
             texY,
-            texW,
-            texH,
+            rect.width * this.scaleFactor,
+            rect.height * this.scaleFactor,
             0,
             0,
             drawW,
             drawH
           );
+          compositeVideos(this._compositeCtx, rect);
 
-          this._videoNodes.forEach((vid) => {
-            if (effectiveZ(vid) >= maxLensZ) return;
-            const vidRect = vid.getBoundingClientRect();
-            if (
-              rect.left < vidRect.right &&
-              rect.right > vidRect.left &&
-              rect.top < vidRect.bottom &&
-              rect.bottom > vidRect.top
-            ) {
-              const xInComposite =
-                (vidRect.left - rect.left) * this.scaleFactor;
-              const yInComposite = (vidRect.top - rect.top) * this.scaleFactor;
-              const wInComposite = vidRect.width * this.scaleFactor;
-              const hInComposite = vidRect.height * this.scaleFactor;
-              this._compositeCtx.drawImage(
-                vid,
-                xInComposite,
-                yInComposite,
-                wInComposite,
-                hInComposite
-              );
-            }
-          });
-
+          const style = window.getComputedStyle(el);
+          this._compositeCtx.save();
           this._compositeCtx.translate(drawW / 2, drawH / 2);
-          if (currentState.transform !== "none") {
+          if (style.transform !== "none") {
             this._compositeCtx.transform(
-              ...this._parseTransform(currentState.transform)
+              ...this._parseTransform(style.transform)
             );
           }
           this._compositeCtx.translate(-drawW / 2, -drawH / 2);
-          this._compositeCtx.globalAlpha =
-            parseFloat(currentState.opacity) || 1;
-
-          this._compositeCtx.drawImage(meta.initialCapture, 0, 0, drawW, drawH);
+          this._compositeCtx.globalAlpha = parseFloat(style.opacity) || 1.0;
+          this._compositeCtx.drawImage(meta.lastCapture, 0, 0, drawW, drawH);
           this._compositeCtx.restore();
 
           gl.bindTexture(gl.TEXTURE_2D, this.texture);
-          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
           gl.texSubImage2D(
             gl.TEXTURE_2D,
             0,
@@ -1032,7 +919,6 @@
             compositeCanvas
           );
 
-          meta.lastAnimationState = currentState;
           meta.prevDrawRect = { x: drawX, y: drawY, w: drawW, h: drawH };
         }
       });
@@ -1077,24 +963,100 @@
         return;
       }
       if (!el.getBoundingClientRect) return;
-
-      if (el.closest && el.closest("[data-liquid-ignore]")) {
-        return;
-      }
-
+      if (el.closest && el.closest("[data-liquid-ignore]")) return;
       if (this._dynamicNodes.some((n) => n.el === el)) return;
 
       this._dynamicNodes = this._dynamicNodes.filter((n) => !el.contains(n.el));
 
-      const isDescendant = this._dynamicNodes.some((n) => n.el.contains(el));
-      if (isDescendant) return;
-
-      this._dynamicNodes.push({
-        el,
+      const meta = {
         _capturing: false,
-        prevRect: null,
         prevDrawRect: null,
+        lastCapture: null,
+        needsRecapture: true,
+        hoverClassName: null,
+      };
+      this._dynMeta.set(el, meta);
+
+      const setDirty = () => {
+        const m = this._dynMeta.get(el);
+        if (m && !m.needsRecapture) {
+          m.needsRecapture = true;
+          requestAnimationFrame(() => this.render());
+        }
+      };
+
+      const findAppliedHoverStyles = (element) => {
+        let cssText = "";
+        for (const sheet of document.styleSheets) {
+          try {
+            for (const rule of sheet.cssRules) {
+              if (!rule.selectorText || !rule.selectorText.includes(":hover")) {
+                continue;
+              }
+              const baseSelector = rule.selectorText.split(":hover")[0];
+              if (element.matches(baseSelector)) {
+                cssText += rule.style.cssText;
+              }
+            }
+          } catch (e) {
+            /* ignore CORS */
+          }
+        }
+        return cssText;
+      };
+
+      const handleLeave = () => {
+        const m = this._dynMeta.get(el);
+        if (!m || !m.hoverClassName) return;
+
+        el.classList.remove(m.hoverClassName);
+        // Find and delete the rule more robustly
+        for (let i = this._dynamicStyleSheet.cssRules.length - 1; i >= 0; i--) {
+          const rule = this._dynamicStyleSheet.cssRules[i];
+          if (rule.selectorText === `.${m.hoverClassName}`) {
+            this._dynamicStyleSheet.deleteRule(i);
+            break;
+          }
+        }
+        m.hoverClassName = null;
+        setDirty();
+      };
+
+      el.addEventListener(
+        "mouseenter",
+        () => {
+          const m = this._dynMeta.get(el);
+          if (!m) return;
+          const hoverCss = findAppliedHoverStyles(el);
+          if (hoverCss) {
+            const className = `lqgl-h-${Math.random()
+              .toString(36)
+              .substr(2, 9)}`;
+            const rule = `.${className} { ${hoverCss} }`;
+            try {
+              this._dynamicStyleSheet.insertRule(
+                rule,
+                this._dynamicStyleSheet.cssRules.length
+              );
+              m.hoverClassName = className;
+              el.classList.add(className);
+            } catch (e) {
+              console.error("LiquidGL: Failed to insert hover style rule.", e);
+            }
+          }
+          setDirty();
+        },
+        { passive: true }
+      );
+
+      el.addEventListener("mouseleave", handleLeave, { passive: true });
+      el.addEventListener("transitionend", setDirty, { passive: true });
+      // Clean up if the element is removed from the DOM
+      el.addEventListener("DOMNodeRemovedFromDocument", handleLeave, {
+        once: true,
       });
+
+      this._dynamicNodes.push({ el });
     }
 
     /* ----------------------------- */
