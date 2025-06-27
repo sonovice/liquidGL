@@ -347,6 +347,13 @@
           }
         });
 
+        // Hide dynamic nodes during the main snapshot to create a "clean plate"
+        this._dynamicNodes.forEach((node) => {
+          const originalDisplay = node.el.style.display;
+          node.el.style.display = "none";
+          undos.push(() => (node.el.style.display = originalDisplay));
+        });
+
         const ignoredElements = this.snapshotTarget.querySelectorAll(
           "[data-liquid-ignore]"
         );
@@ -767,8 +774,43 @@
       const maxLensZ = this._getMaxLensZ();
 
       captureTargets.forEach(({ el, meta }) => {
+        // --- ERASE previous frame's drawing to prevent ghosting ---
+        if (meta.prevDrawRect) {
+          const { x, y, w, h } = meta.prevDrawRect;
+          if (w > 0 && h > 0) {
+            const eraseCanvas = this._compositeCtx.canvas;
+            if (eraseCanvas.width !== w || eraseCanvas.height !== h) {
+              eraseCanvas.width = w;
+              eraseCanvas.height = h;
+            }
+            this._compositeCtx.drawImage(
+              this.staticSnapshotCanvas,
+              x,
+              y,
+              w,
+              h,
+              0,
+              0,
+              w,
+              h
+            );
+            gl.bindTexture(gl.TEXTURE_2D, this.texture);
+            gl.texSubImage2D(
+              gl.TEXTURE_2D,
+              0,
+              x,
+              y,
+              gl.RGBA,
+              gl.UNSIGNED_BYTE,
+              eraseCanvas
+            );
+          }
+        }
+
         // Exclude any element above the lens in stacking order.
         if (effectiveZ(el) >= maxLensZ) {
+          // Still need to clear its last rect if it moves above the lens
+          meta.prevDrawRect = null;
           return;
         }
 
@@ -987,16 +1029,17 @@
 
     _parseTransform(transform) {
       if (transform === "none") return [1, 0, 0, 1, 0, 0];
-
-      const matrix = [1, 0, 0, 1, 0, 0];
-
-      const matrixMatch = transform.match(/matrix\((.*?)\)/);
+      const matrixMatch = transform.match(/matrix\((.+)\)/);
       if (matrixMatch) {
         const values = matrixMatch[1].split(",").map(parseFloat);
         return values;
       }
-
-      return matrix;
+      const matrix3dMatch = transform.match(/matrix3d\((.+)\)/);
+      if (matrix3dMatch) {
+        const v = matrix3dMatch[1].split(",").map(parseFloat);
+        return [v[0], v[1], v[4], v[5], v[12], v[13]];
+      }
+      return [1, 0, 0, 1, 0, 0];
     }
 
     /* ----------------------------- */
@@ -1603,5 +1646,9 @@
     const renderer = window.__LiquidGLRenderer__;
     if (!renderer || !renderer.addDynamicElement) return;
     renderer.addDynamicElement(elements);
+    // After registering new elements, the snapshot is stale. Recapture.
+    if (renderer.captureSnapshot) {
+      renderer.captureSnapshot();
+    }
   };
 })();
