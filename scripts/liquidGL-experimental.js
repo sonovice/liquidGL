@@ -838,6 +838,8 @@
         });
       };
 
+      const batchUploads = [];
+
       this._dynamicNodes.forEach((node) => {
         const el = node.el;
         const meta = this._dynMeta.get(el);
@@ -971,17 +973,6 @@
           this._compositeCtx.drawImage(meta.lastCapture, 0, 0, drawW, drawH);
           this._compositeCtx.restore();
 
-          gl.bindTexture(gl.TEXTURE_2D, this.texture);
-          gl.texSubImage2D(
-            gl.TEXTURE_2D,
-            0,
-            drawX,
-            drawY,
-            gl.RGBA,
-            gl.UNSIGNED_BYTE,
-            compositeCanvas
-          );
-
           if (this._workerEnabled && meta._heavyAnim) {
             const jobId = `${Date.now()}_${Math.random()}`;
             this._dynJobs.set(jobId, {
@@ -1014,11 +1005,68 @@
             });
             meta.prevDrawRect = { x: drawX, y: drawY, w: drawW, h: drawH };
             return;
+          } else {
+            batchUploads.push({
+              x: drawX,
+              y: drawY,
+              w: drawW,
+              h: drawH,
+              canvas: compositeCanvas,
+            });
           }
-
-          meta.prevDrawRect = { x: drawX, y: drawY, w: drawW, h: drawH };
         }
       });
+
+      if (batchUploads.length) {
+        let ux = Infinity,
+          uy = Infinity,
+          ux2 = -Infinity,
+          uy2 = -Infinity;
+        batchUploads.forEach(({ x, y, w, h }) => {
+          ux = Math.min(ux, x);
+          uy = Math.min(uy, y);
+          ux2 = Math.max(ux2, x + w);
+          uy2 = Math.max(uy2, y + h);
+        });
+        const uWidth = ux2 - ux;
+        const uHeight = uy2 - uy;
+        if (uWidth > 0 && uHeight > 0) {
+          if (!this._batchCanvas)
+            this._batchCanvas = document.createElement("canvas");
+          const bc = this._batchCanvas;
+          if (bc.width !== uWidth || bc.height !== uHeight) {
+            bc.width = uWidth;
+            bc.height = uHeight;
+          }
+          const bctx = bc.getContext("2d");
+          bctx.clearRect(0, 0, uWidth, uHeight);
+          bctx.drawImage(
+            this.staticSnapshotCanvas,
+            ux,
+            uy,
+            uWidth,
+            uHeight,
+            0,
+            0,
+            uWidth,
+            uHeight
+          );
+          batchUploads.forEach(({ x, y, canvas }) => {
+            bctx.drawImage(canvas, x - ux, y - uy);
+          });
+
+          gl.bindTexture(gl.TEXTURE_2D, this.texture);
+          gl.texSubImage2D(
+            gl.TEXTURE_2D,
+            0,
+            ux,
+            uy,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            bc
+          );
+        }
+      }
     }
 
     _parseTransform(transform) {
