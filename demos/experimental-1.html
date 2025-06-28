@@ -126,6 +126,23 @@
         margin-top: 1rem;
       }
 
+      .banner-text-button.dark {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: transparent;
+        color: #333333;
+        padding: 0.75rem 1.5rem;
+        border: 1px solid #333333;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1.125rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s ease-in-out;
+        margin-top: 1rem;
+      }
+
       .banner-text-button:hover {
         opacity: 0.8;
       }
@@ -319,6 +336,92 @@
         border-radius: 3px;
         background: #333333;
       }
+
+      /* Features Section */
+      .features-section {
+        height: auto !important;
+        padding: 10vw 0;
+        background-color: #f5f5f7; /* Apple-like light grey */
+        flex-direction: column;
+        gap: 4vw;
+      }
+      .features-card {
+        background: #fff;
+        color: #333;
+        border-radius: 2vw;
+        padding: 4vw;
+        width: 100%;
+        max-width: 70vw;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        text-align: left;
+      }
+      .features-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr); /* 2 columns */
+        gap: 1.5rem 2rem;
+      }
+      .feature-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        font-size: 1.2rem;
+        font-weight: 500;
+        line-height: 1.4;
+      }
+      .feature-item svg {
+        flex-shrink: 0;
+        width: 1.5rem;
+        height: 1.5rem;
+        fill: #007aff; /* Apple blue */
+        margin-top: 0.1em;
+      }
+
+      .features-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1.125rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s ease-in-out;
+        margin-top: 1rem;
+        color: #333;
+        border: 1px solid #333;
+        background: #fff;
+      }
+
+      .features-button:hover {
+        background: #333;
+        color: #fff;
+      }
+
+      .features-button svg {
+        width: 1.5rem;
+        height: 1.5rem;
+        fill: currentColor;
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .features-card {
+          max-width: 90vw;
+          padding: 6vw;
+        }
+        .features-list {
+          grid-template-columns: 1fr;
+          gap: 1rem;
+        }
+        .feature-item {
+          font-size: 1rem;
+        }
+      }
     </style>
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
@@ -387,20 +490,87 @@
     </div>
     </div>
       <div
-        class="content-section"
+        class="content-section features-section"
       >
       <div class="section-title-container">
         <div class="banner-text dark sm">Features</div>
       </div>
+      <div class="features-card">
+        <ul class="features-list">
+          <li class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" />
+            </svg>
+            <span>Real-time Refraction</span>
+          </li>
+          <li class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" />
+            </svg>
+            <span>Adjustable Bevel</span>
+          </li>
+          <li class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" />
+            </svg>
+            <span>Frosted Glass Effect</span>
+          </li>
+          <li class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" />
+            </svg>
+            <span>Dynamic Shadows</span>
+          </li>
+          <li class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" />
+            </svg>
+            <span>Specular Highlights</span>
+          </li>
+          <li class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" />
+            </svg>
+            <span>Interactive Tilt Effect</span>
+          </li>
+          <li class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" />
+            </svg>
+            <span>Magnification Control</span>
+          </li>
+          <li class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" />
+            </svg>
+            <span>GSAP-Ready Animations</span>
+          </li>
+          <li class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" />
+            </svg>
+            <span>Dynamic Element Support</span>
+          </li>
+           <li class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" />
+            </svg>
+            <span>Lightweight & Performant</span>
+          </li>
+        </ul>
+        <div class="banner-text-container">
+          <a href="https://github.com/naughtyduk/liquidgl" target="_blank" class="banner-text-button dark">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+            </svg>
+            <span>View on GitHub</span>
+          </a>
+        </div>
       </div>
-      <div
-      class="content-section"
-      style="background-image: url(/assets/liquid-bkg-_0002_Comp-163.webp)"
-    >
     </div>
       <div
         class="content-section"
-        style="background-image: url(/assets/liquid-bkg-_0003_Comp-151.webp)"
+        style="background-image: url(/assets/liquid-bkg-_0002_Comp-163.webp)"
       >
         <div class="banner-text split">
           THIS TEXT IS ANIMATED WITH GSAP SPLITTEXT AND REFRACTED IN REAL TIME
@@ -507,10 +677,11 @@
             },
           });
 
+          const allButtons = [];
+
           /* 3. Register SplitText lines for dirty-rect updates */
           LiquidGL.registerDynamic(allSplitLines);
           LiquidGL.registerDynamic(".banner-text-container");
-          LiquidGL.registerDynamic(".banner-text-button");
 
           console.log("liquidGL ready!", glassEffect);
 

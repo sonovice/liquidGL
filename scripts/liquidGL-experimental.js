@@ -101,6 +101,8 @@
       if (!this.snapshotTarget) this.snapshotTarget = document.body;
 
       const onResize = debounce(() => {
+        if (this._capturing) return;
+
         if (window.visualViewport && window.visualViewport.scale !== 1) {
           return;
         }
@@ -409,11 +411,7 @@
           }
         });
 
-        this._dynamicNodes.forEach((node) => {
-          const originalDisplay = node.el.style.display;
-          node.el.style.display = "none";
-          undos.push(() => (node.el.style.display = originalDisplay));
-        });
+        this._dynamicNodes.forEach(() => {});
 
         const ignoredElements = this.snapshotTarget.querySelectorAll(
           "[data-liquid-ignore]"
@@ -467,7 +465,15 @@
           scrollY: 0,
           scale: scale,
           ignoreElements: (element) => {
-            return element.tagName === "CANVAS" && element !== this.canvas;
+            if (element.tagName === "CANVAS" && element !== this.canvas) {
+              return true;
+            }
+            for (const dyn of this._dynamicNodes) {
+              if (dyn.el === element || dyn.el.contains(element)) {
+                return true;
+              }
+            }
+            return false;
           },
         });
 
