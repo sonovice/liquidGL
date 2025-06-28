@@ -465,15 +465,7 @@
           scrollY: 0,
           scale: scale,
           ignoreElements: (element) => {
-            if (element.tagName === "CANVAS" && element !== this.canvas) {
-              return true;
-            }
-            for (const dyn of this._dynamicNodes) {
-              if (dyn.el === element || dyn.el.contains(element)) {
-                return true;
-              }
-            }
-            return false;
+            return element.tagName === "CANVAS" && element !== this.canvas;
           },
         });
 
