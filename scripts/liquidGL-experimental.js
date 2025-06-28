@@ -1742,7 +1742,7 @@
     const defaults = {
       target: ".glassify",
       snapshot: "body",
-      resolution: 1.0,
+      resolution: 2.0,
       refraction: 0.01,
       bevelDepth: 0.08,
       bevelWidth: 0.15,
