@@ -385,7 +385,7 @@
         margin: 0 0 2vw 0;
         width: 100%;
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(3, 1fr);
         gap: 1.5rem 2rem;
       }
       .feature-item {
@@ -434,7 +434,13 @@
       }
 
       /* Responsive */
-      @media (max-width: 768px) {
+      @media (max-width: 1395px) {
+        .features-list {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      @media (max-width: 925px) {
         .features-card {
           max-width: 90vw;
           padding: 6vw;
@@ -575,6 +581,36 @@
               <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" />
             </svg>
             <span>Lightweight & Performant</span>
+          </li>
+           <li class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" />
+            </svg>
+            <span>Seamless Scroll Sync</span>
+          </li>
+           <li class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" />
+            </svg>
+            <span>Auto-Resize Handling</span>
+          </li>
+          <li class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" />
+            </svg>
+            <span>Auto Video Refraction</span>
+          </li>
+           <li class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" />
+            </svg>
+            <span>Animate Lenses</span>
+          </li>
+           <li class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" />
+            </svg>
+            <span>on.init Callback</span>
           </li>
         </ul>
         <div class="banner-text-container">
