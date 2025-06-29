@@ -103,6 +103,7 @@
       .banner-text.xs {
         font-size: 1vw;
         line-height: 1.2;
+        max-width: 26vw;
       }
 
       .banner-text.dark {
@@ -151,6 +152,29 @@
         width: 1.5rem;
         height: 1.5rem;
         fill: currentColor;
+      }
+
+      @media (max-width: 768px) {
+        .banner-text-button {
+          width: 60vw;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          text-align: center;
+        }
+
+        .banner-text.xs {
+          font-size: 4vw;
+          max-width: 100vw;
+        }
+
+        .banner-text.sm {
+          font-size: 6vw;
+        }
+
+        .banner-text.xl {
+          font-size: 16vw;
+        }
       }
 
       .banner-video {
@@ -453,7 +477,7 @@
           <div class="banner-text sm">Introducing</div>
           <div class="banner-text xl">liquidGL</div>
           <div class="banner-text xs">
-          </br></br>A real-time liquid glass effect for the web</br>Built with love by <a target="_blank" href="https://naughtyduk.com">NaughtyDuk©</a>
+          </br></br>A real-time liquid glass effect for the web. Built with love by <a target="_blank" href="https://naughtyduk.com">NaughtyDuk©</a>
           </div>
           <a href="https://github.com/naughtyduk/liquidgl" target="_blank" class="banner-text-button">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">

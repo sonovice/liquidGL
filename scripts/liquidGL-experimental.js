@@ -397,62 +397,9 @@
         this.canvas.style.visibility = "hidden";
         undos.push(() => (this.canvas.style.visibility = "visible"));
 
-        this.lenses.forEach((lens) => {
-          const originalDisplay = lens.el.style.display;
-          lens.el.style.display = "none";
-          undos.push(() => (lens.el.style.display = originalDisplay));
-
-          if (lens._shadowEl) {
-            const originalShadowDisplay = lens._shadowEl.style.display;
-            lens._shadowEl.style.display = "none";
-            undos.push(
-              () => (lens._shadowEl.style.display = originalShadowDisplay)
-            );
-          }
-        });
-
-        this._dynamicNodes.forEach(() => {});
-
-        const ignoredElements = this.snapshotTarget.querySelectorAll(
-          "[data-liquid-ignore]"
-        );
-
-        const ignoredStates = new Map();
-        ignoredElements.forEach((el) => {
-          if (el === this.canvas) return;
-
-          ignoredStates.set(el, {
-            visibility: el.style.visibility,
-            opacity: el.style.opacity,
-            filter: el.style.filter,
-            background: el.style.background,
-            backgroundImage: el.style.backgroundImage,
-            color: el.style.color,
-            src: el.tagName === "VIDEO" || el.tagName === "IMG" ? el.src : null,
-          });
-
-          el.style.visibility = "hidden";
-          el.style.opacity = "0";
-          el.style.filter = "opacity(0)";
-          el.style.background = "none";
-          el.style.backgroundImage = "none";
-          el.style.color = "transparent";
-
-          if (el.tagName === "VIDEO" || el.tagName === "IMG") {
-            el.src = "";
-          }
-
-          undos.push(() => {
-            const state = ignoredStates.get(el);
-            el.style.visibility = state.visibility;
-            el.style.opacity = state.opacity;
-            el.style.filter = state.filter;
-            el.style.background = state.background;
-            el.style.backgroundImage = state.backgroundImage;
-            el.style.color = state.color;
-            if (state.src) el.src = state.src;
-          });
-        });
+        const lensElements = this.lenses
+          .flatMap((lens) => [lens.el, lens._shadowEl])
+          .filter(Boolean);
 
         const snapCanvas = await html2canvas(this.snapshotTarget, {
           allowTaint: false,
@@ -465,7 +412,16 @@
           scrollY: 0,
           scale: scale,
           ignoreElements: (element) => {
-            return element.tagName === "CANVAS" && element !== this.canvas;
+            if (!element || !element.hasAttribute) return false;
+            // Ignore the renderer's own canvas, all lens elements, and their shadows
+            if (element === this.canvas || lensElements.includes(element)) {
+              return true;
+            }
+            // Ignore elements the user has marked to be ignored
+            return (
+              element.hasAttribute("data-liquid-ignore") ||
+              element.closest("[data-liquid-ignore]")
+            );
           },
         });
 
