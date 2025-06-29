@@ -696,7 +696,7 @@
               init: function (lens) {
                 /* OPTIONAL - GSAP ANIMATION OF TARGET ELEMENT */
                 /* You can animate the target element to create a more dynamic effect,
-                or use the on callback to run any code after liquidGL is initialised. */
+                or use the on.init callback to run any code after liquidGL is initialised. */
                 gsap.to(lens.el, {
                   scaleX: 1,
                   duration: 1.2,
@@ -718,7 +718,8 @@
           console.log("liquidGL ready!", glassEffect);
 
           /* 4. OPTIONAL - UNIVERSAL SCROLL/ANIMATION SYNC */
-          /* Works automatically with Lenis, Locomotive Scroll, GSAP, GSAP ScrollTrigger. */
+          /* Works automatically with Lenis, Locomotive Scroll, GSAP, GSAP ScrollTrigger.
+          Recommended use is to include Lenis, GSAP and GSAP ScrollTrigger libraries. */
           LiquidGL.syncWith();
 
           /* DEMO ONLY - GUI CONTROLS, NOT REQUIRED FOR LIBRARY USAGE */
