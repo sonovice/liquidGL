@@ -717,21 +717,9 @@
 
           console.log("liquidGL ready!", glassEffect);
 
-          /* 4. OPTIONAL - LENIS + GSAP SYNC */
-          const lenis = new Lenis();
-          lenis.on("scroll", ScrollTrigger.update);
-          gsap.ticker.add((t) => {
-            lenis.raf(t * 1000);
-            if (window.glassEffect) {
-            if (Array.isArray(window.glassEffect)) {
-              if (window.__LiquidGLRenderer__)
-                window.__LiquidGLRenderer__.render();
-            } else if (!window.glassEffect.options.specular) {
-              window.glassEffect.render();
-            }
-          }
-          });
-          gsap.ticker.lagSmoothing(0);
+          /* 4. OPTIONAL - UNIVERSAL SCROLL/ANIMATION SYNC */
+          /* Works automatically with Lenis, Locomotive Scroll, GSAP, GSAP ScrollTrigger. */
+          LiquidGL.syncWith();
 
           /* DEMO ONLY - GUI CONTROLS, NOT REQUIRED FOR LIBRARY USAGE */
           const lensArr = Array.isArray(glassEffect)

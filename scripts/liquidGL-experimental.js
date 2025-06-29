@@ -168,6 +168,8 @@
         Math.min(3.0, snapshotResolution)
       );
 
+      this.useExternalTicker = false;
+
       /* --------------------------------------------------
        *  Inline worker for heavy dynamic nodes
        * ------------------------------------------------*/
@@ -1769,7 +1771,7 @@
       renderer.addLens(el, options)
     );
 
-    if (!renderer._rafId) {
+    if (!renderer._rafId && !renderer.useExternalTicker) {
       const loop = () => {
         renderer.render();
         renderer._rafId = requestAnimationFrame(loop);
@@ -1790,5 +1792,97 @@
     if (renderer.captureSnapshot) {
       renderer.captureSnapshot();
     }
+  };
+
+  /* --------------------------------------------------
+   *  Public helper: Universal smooth scroll / animation sync
+   * ------------------------------------------------*/
+  window.LiquidGL.syncWith = function (config = {}) {
+    const renderer = window.__LiquidGLRenderer__;
+    if (!renderer) {
+      console.warn(
+        "LiquidGL: Please initialize LiquidGL *before* calling syncWith()."
+      );
+      return;
+    }
+
+    // --- Dependency Detection ---
+    const G = window.gsap;
+    const L = window.Lenis;
+    const LS = window.LocomotiveScroll;
+    const ST = G ? G.ScrollTrigger : null;
+
+    let lenis = config.lenis;
+    let loco = config.locomotiveScroll;
+    const useGSAP = config.gsap !== false && G && ST;
+
+    // Auto-detect if not provided by user
+    if (config.lenis !== false && L && !lenis) {
+      lenis = new L();
+    }
+
+    if (
+      config.locomotiveScroll !== false &&
+      LS &&
+      !loco &&
+      document.querySelector("[data-scroll-container]")
+    ) {
+      loco = new LS({
+        el: document.querySelector("[data-scroll-container]"),
+        smooth: true,
+      });
+    }
+
+    // --- Bridge Setup ---
+    if (useGSAP && ST) {
+      if (loco) {
+        loco.on("scroll", ST.update);
+        ST.scrollerProxy(loco.el, {
+          scrollTop(value) {
+            return arguments.length
+              ? loco.scrollTo(value, { duration: 0, disableLerp: true })
+              : loco.scroll.instance.scroll.y;
+          },
+          getBoundingClientRect() {
+            return {
+              top: 0,
+              left: 0,
+              width: window.innerWidth,
+              height: window.innerHeight,
+            };
+          },
+          pinType: loco.el.style.transform ? "transform" : "fixed",
+        });
+        ST.addEventListener("refresh", () => loco.update());
+        ST.refresh();
+      } else if (lenis) {
+        lenis.on("scroll", ST.update);
+      }
+    }
+
+    // --- Render Loop Integration ---
+    if (renderer._rafId) {
+      cancelAnimationFrame(renderer._rafId);
+      renderer._rafId = null;
+    }
+    renderer.useExternalTicker = true;
+
+    if (useGSAP) {
+      G.ticker.add((time) => {
+        if (lenis) lenis.raf(time * 1000); // Lenis wants ms
+        renderer.render();
+      });
+      G.ticker.lagSmoothing(0);
+    } else {
+      const loop = (time) => {
+        if (lenis) lenis.raf(time);
+        if (loco) loco.update(); // Manual update if no GSAP
+        renderer.render();
+        renderer._rafId = requestAnimationFrame(loop);
+      };
+      renderer._rafId = requestAnimationFrame(loop);
+    }
+
+    return { lenis, locomotiveScroll: loco };
   };
 })();
