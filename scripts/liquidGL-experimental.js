@@ -101,7 +101,6 @@
         document.querySelector(snapshotSelector) || document.body;
       if (!this.snapshotTarget) this.snapshotTarget = document.body;
 
-      // --- Scroll detection for smooth scrollers ---
       this._isScrolling = false;
       let lastScrollY = window.scrollY;
       let scrollTimeout;
@@ -124,6 +123,15 @@
         if (window.visualViewport && window.visualViewport.scale !== 1) {
           return;
         }
+
+        this._dynamicNodes.forEach((node) => {
+          const meta = this._dynMeta.get(node.el);
+          if (meta) {
+            meta.needsRecapture = true;
+            meta.prevDrawRect = null;
+            meta.lastCapture = null;
+          }
+        });
 
         this._resizeCanvas();
         this.lenses.forEach((l) => l.updateMetrics());
@@ -459,11 +467,9 @@
           scale: scale,
           ignoreElements: (element) => {
             if (!element || !element.hasAttribute) return false;
-            // Ignore the renderer's own canvas, all lens elements, and their shadows
             if (element === this.canvas || lensElements.includes(element)) {
               return true;
             }
-            // Ignore elements the user has marked to be ignored
             return (
               element.hasAttribute("data-liquid-ignore") ||
               element.closest("[data-liquid-ignore]")
