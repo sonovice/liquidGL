@@ -258,6 +258,12 @@
         float udRoundBox( vec2 p, vec2 b, float r ) {
           return length(max(abs(p)-b+r,0.0))-r;
         }
+
+        // Pseudo-random function to break up sampling patterns
+        float random(vec2 st) {
+          return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+        }
+
         float edgeFactor(vec2 uv, float radius_px){
           vec2 p_px = (uv - 0.5) * u_resolution;
           vec2 b_px = 0.5 * u_resolution;
@@ -295,14 +301,34 @@
 
           vec4 baseCol   = texture2D(u_tex, mapped);
 
-          // Smoothed refraction: 5-point multisampling to reduce aliasing from texture stretching.
+          // Smoothed refraction & frost
           vec2 texel = 1.0 / u_textureResolution;
-          vec4 refrCol = texture2D(u_tex, sampleUV);
-          refrCol += texture2D(u_tex, sampleUV + vec2( texel.x, 0.0));
-          refrCol += texture2D(u_tex, sampleUV + vec2(-texel.x, 0.0));
-          refrCol += texture2D(u_tex, sampleUV + vec2(0.0,  texel.y));
-          refrCol += texture2D(u_tex, sampleUV + vec2(0.0, -texel.y));
-          refrCol /= 5.0;
+          vec4 refrCol;
+
+          if (u_frost > 0.0) {
+              // High-quality, non-linear blur for a smooth "frost" effect
+              float radius = u_frost * 4.0;
+              vec4 sum = vec4(0.0);
+              const int SAMPLES = 16; // Keep sample count reasonable for performance
+
+              for (int i = 0; i < SAMPLES; i++) {
+                  // Use a pseudo-random angle and distance to sample in a disk pattern
+                  // This breaks up the geometric artifacts of grid-based blurs.
+                  float angle = random(v_uv + float(i)) * 6.283185; // 2 * PI
+                  float dist = sqrt(random(v_uv - float(i))) * radius;
+                  vec2 offset = vec2(cos(angle), sin(angle)) * texel * dist;
+                  sum += texture2D(u_tex, sampleUV + offset);
+              }
+              refrCol = sum / float(SAMPLES);
+          } else {
+              // Default: 5-point multisampling to reduce aliasing from texture stretching.
+              refrCol = texture2D(u_tex, sampleUV);
+              refrCol += texture2D(u_tex, sampleUV + vec2( texel.x, 0.0));
+              refrCol += texture2D(u_tex, sampleUV + vec2(-texel.x, 0.0));
+              refrCol += texture2D(u_tex, sampleUV + vec2(0.0,  texel.y));
+              refrCol += texture2D(u_tex, sampleUV + vec2(0.0, -texel.y));
+              refrCol /= 5.0;
+          }
 
           // If refracted sample is from a clipped video corner (alpha ~0), use base color instead.
           if (refrCol.a < 0.1) {
