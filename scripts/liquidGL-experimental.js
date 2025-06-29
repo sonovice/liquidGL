@@ -100,8 +100,25 @@
         document.querySelector(snapshotSelector) || document.body;
       if (!this.snapshotTarget) this.snapshotTarget = document.body;
 
+      // --- Scroll detection for smooth scrollers ---
+      this._isScrolling = false;
+      let lastScrollY = window.scrollY;
+      let scrollTimeout;
+      const scrollCheck = () => {
+        if (window.scrollY !== lastScrollY) {
+          this._isScrolling = true;
+          lastScrollY = window.scrollY;
+          clearTimeout(scrollTimeout);
+          scrollTimeout = setTimeout(() => {
+            this._isScrolling = false;
+          }, 200);
+        }
+        requestAnimationFrame(scrollCheck);
+      };
+      requestAnimationFrame(scrollCheck);
+
       const onResize = debounce(() => {
-        if (this._capturing) return;
+        if (this._capturing || this._isScrolling) return;
 
         if (window.visualViewport && window.visualViewport.scale !== 1) {
           return;
@@ -797,7 +814,7 @@
         const meta = this._dynMeta.get(el);
         if (!meta) return;
 
-        if (meta.needsRecapture && !meta._capturing) {
+        if (meta.needsRecapture && !meta._capturing && !this._isScrolling) {
           meta._capturing = true;
 
           html2canvas(el, {
