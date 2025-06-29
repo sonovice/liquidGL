@@ -635,19 +635,23 @@
     <script src="/scripts/html2canvas.js"></script>
     <script src="/scripts/liquidGL-experimental.js"></script>
     <script>
-      // GSAP SplitText Animation
+      /* OPTIONAL - Register GSAP SplitText */
       gsap.registerPlugin(SplitText);
 
+      /* OPTIONAL - glassEffect variabledeclared globally so it can be 
+      accessed by the custom controls */
       let glassEffect;
 
+      /* RECOMMENDED - DOMContentLoaded Event */
       document.addEventListener("DOMContentLoaded", () => {
+        /* RECOMMENDED - Wait for fonts to be loaded */
         const fontsReady =
           document.fonts && document.fonts.ready
             ? document.fonts.ready
             : Promise.resolve();
 
         fontsReady.then(() => {
-          /* 1. Prepare SplitText first */
+          /* 1. OPTIONAL - PREPARE ANIMATIONS BEFORE INITIALISING LIQUIDGL */
           gsap.set(".split", { visibility: "visible" });
           const allSplitLines = [];
 
@@ -658,7 +662,6 @@
               mask: "lines",
             });
 
-            // Animate lines when the element's top reaches 50% of viewport
             gsap.from(split.lines, {
               scrollTrigger: {
                 trigger: splitEl,
@@ -674,7 +677,7 @@
             allSplitLines.push(...split.lines);
           });
 
-          /* 2. Init LiquidGL after SplitText so snapshot matches */
+          /* 2. REQUIRED - INITIALISE LIQUIDGL */
           glassEffect = LiquidGL({
             target: ".liquidGL",
             snapshot: "body",
@@ -691,6 +694,9 @@
             magnify: 1,
             on: {
               init: function (lens) {
+                /* OPTIONAL - GSAP ANIMATION OF TARGET ELEMENT */
+                /* You can animate the target element to create a more dynamic effect,
+                or use the on callback to run any code after liquidGL is initialised. */
                 gsap.to(lens.el, {
                   scaleX: 1,
                   duration: 1.2,
@@ -702,13 +708,32 @@
 
           const allButtons = [];
 
-          /* 3. Register SplitText lines for dirty-rect updates */
+          /* 3. REQUIRED FOR DYNAMIC ELEMENTS - REGISTER DYNAMIC ELEMENTS */
+          /* You need to register any elements that intersect the target which
+          you want to be refracted. For example animated content, text, etc. 
+          You do not need to register videos, they are automatically registered.*/
           LiquidGL.registerDynamic(allSplitLines);
           LiquidGL.registerDynamic(".banner-text-container");
 
           console.log("liquidGL ready!", glassEffect);
 
-          /* 4. GUI etc. */
+          /* 4. OPTIONAL - LENIS + GSAP SYNC */
+          const lenis = new Lenis();
+          lenis.on("scroll", ScrollTrigger.update);
+          gsap.ticker.add((t) => {
+            lenis.raf(t * 1000);
+            if (window.glassEffect) {
+            if (Array.isArray(window.glassEffect)) {
+              if (window.__LiquidGLRenderer__)
+                window.__LiquidGLRenderer__.render();
+            } else if (!window.glassEffect.options.specular) {
+              window.glassEffect.render();
+            }
+          }
+          });
+          gsap.ticker.lagSmoothing(0);
+
+          /* DEMO ONLY - GUI CONTROLS, NOT REQUIRED FOR LIBRARY USAGE */
           const lensArr = Array.isArray(glassEffect)
             ? glassEffect
             : [glassEffect];
@@ -750,27 +775,11 @@
             .name("Reveal")
             .onChange((v) => sync("reveal", v));
           folder.close();
-
-          /* 5. Lenis + GSAP ticker sync */
-          const lenis = new Lenis();
-          lenis.on("scroll", ScrollTrigger.update);
-          gsap.ticker.add((t) => {
-            lenis.raf(t * 1000);
-            if (window.glassEffect) {
-            // For multi-instance build, glassEffect may be an array; call renderer directly.
-            if (Array.isArray(window.glassEffect)) {
-              if (window.__LiquidGLRenderer__)
-                window.__LiquidGLRenderer__.render();
-            } else if (!window.glassEffect.options.specular) {
-              window.glassEffect.render();
-            }
-          }
-          });
-          gsap.ticker.lagSmoothing(0);
         });
       });
     </script>
     <script>
+      /* DEMO ONLY - VIDEO PLAYER, NOT REQUIRED FOR LIBRARY USAGE */
       document.addEventListener("DOMContentLoaded", () => {
         // Select elements without modifying existing HTML
         const videoTrigger = document.querySelector(".video-hover-area");
