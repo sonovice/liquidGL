@@ -93,6 +93,7 @@
       this.textureHeight = 0;
       this.scaleFactor = 1;
       this.startTime = Date.now();
+      this._scrollUpdateCounter = 0;
 
       this._initGL();
 
@@ -524,6 +525,10 @@
       const gl = this.gl;
       if (!this.texture) return;
 
+      if (this._isScrolling) {
+        this._scrollUpdateCounter++;
+      }
+
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.useProgram(this.program);
@@ -659,6 +664,7 @@
 
     /* ----------------------------- */
     _updateDynamicVideos() {
+      if (this._isScrolling && this._scrollUpdateCounter % 2 !== 0) return;
       if (
         !this.texture ||
         !this.staticSnapshotCanvas ||
@@ -766,6 +772,7 @@
 
     /* ----------------------------- */
     _updateDynamicNodes() {
+      if (this._isScrolling && this._scrollUpdateCounter % 2 !== 0) return;
       const gl = this.gl;
       if (!this.texture || !this._dynMeta) return;
       const snapRect = this.snapshotTarget.getBoundingClientRect();
