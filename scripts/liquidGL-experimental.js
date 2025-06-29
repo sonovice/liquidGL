@@ -1439,6 +1439,7 @@
     _reveal() {
       if (this.revealTypeIndex === 0) {
         this.el.style.opacity = this.originalOpacity || 1;
+        this.renderer.canvas.style.opacity = "1";
         this._revealProgress = 1;
         this._TriggerInit();
         return;
