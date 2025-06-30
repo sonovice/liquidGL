@@ -114,10 +114,10 @@ Next, initialise the library with the selector for your target element.
 
 > **Note:** Videos are automatically detected and do not need to be registered.
 
-Register dynamic elements _after_ initializing `liquidGL()` but _before_ calling `liquidGL.syncWith()` (if used). You can register elements using a CSS selector string or by passing an array of DOM elements.
+Register dynamic elements _after_ initialising `liquidGL()` but _before_ calling `liquidGL.syncWith()` (if used). You can register elements using a CSS selector string or by passing an array of DOM elements.
 
 ```javascript
-// After initializing liquidGL...
+// After initialising liquidGL...
 const glassEffect = liquidGL({
   target: ".liquidGL",
   // ... other options
@@ -137,12 +137,12 @@ liquidGL.registerDynamic(mySplitText.lines); // Pass the array of line elements
 
 `liquidGL` includes a `syncWith()` helper to automatically integrate with popular smooth-scrolling libraries like Lenis and Locomotive Scroll. It handles the render loop synchronization for you.
 
-> Simply call `liquidGL.syncWith()` after initializing `liquidGL`.
+> Simply call `liquidGL.syncWith()` after initialising `liquidGL`.
 
 ```html
 <script>
   document.addEventListener("DOMContentLoaded", () => {
-    // First, initialize liquidGL
+    // First, initialise liquidGL
     const glassEffect = liquidGL({
       target: ".liquidGL",
       // ... other options
