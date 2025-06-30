@@ -181,23 +181,9 @@
           folder.close();
         }
 
-        /* 3. Lenis + GSAP ticker sync (same pattern as other demos) */
+        /* 3. Lenis + GSAP ticker sync */
         window.addEventListener("load", () => {
-          const lenis = new Lenis();
-          lenis.on("scroll", ScrollTrigger.update);
-          gsap.ticker.add((t) => {
-            lenis.raf(t * 1000);
-            if (glassEffect) {
-              if (Array.isArray(glassEffect)) {
-                if (window.__liquidGLRenderer__)
-                  window.__liquidGLRenderer__.render();
-              } else if (!glassEffect.options.specular) {
-                if (window.__liquidGLRenderer__)
-                  window.__liquidGLRenderer__.render();
-              }
-            }
-          });
-          gsap.ticker.lagSmoothing(0);
+          liquidGL.syncWith();
         });
 
         document.addEventListener("mousemove", (e) => {

@@ -318,19 +318,10 @@
         }
       });
 
-      // Lenis & GSAP ScrollTrigger integration
-      const lenis = new Lenis();
-
-      lenis.on("scroll", ScrollTrigger.update);
-
-      gsap.ticker.add((time) => {
-        lenis.raf(time * 1000);
-        if (window.__liquidGLRenderer__) {
-          window.__liquidGLRenderer__.render();
-        }
+      /* 3. Lenis + GSAP ticker sync */
+      window.addEventListener("load", () => {
+        liquidGL.syncWith();
       });
-
-      gsap.ticker.lagSmoothing(0);
     </script>
   </body>
 </html>

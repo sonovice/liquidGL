@@ -658,21 +658,7 @@
             { passive: false }
           );
 
-          lenis.on("scroll", ScrollTrigger.update);
-
-          gsap.ticker.add((time) => {
-            lenis.raf(time * 1000);
-            if (window.glassEffect) {
-              if (Array.isArray(window.glassEffect)) {
-                if (window.__liquidGLRenderer__)
-                  window.__liquidGLRenderer__.render();
-              } else if (!window.glassEffect.options.specular) {
-                window.glassEffect.render();
-              }
-            }
-          });
-
-          gsap.ticker.lagSmoothing(0);
+          liquidGL.syncWith({ lenis: lenis });
         });
       });
     </script>
