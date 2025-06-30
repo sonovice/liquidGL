@@ -19,16 +19,19 @@
 
 ### Key Features
 
-| Feature                 | Supported | Feature                  | Supported |
-| :---------------------- | :-------: | :----------------------- | :-------: |
-| Real-time Refraction    |    ✅     | GSAP-Ready Animations    |    ✅     |
-| Adjustable Bevel        |    ✅     | Lightweight & Performant |    ✅     |
-| Frosted Glass Effect    |    ✅     | Seamless Scroll Sync     |    ✅     |
-| Dynamic Shadows         |    ✅     | Auto-Resize Handling     |    ✅     |
-| Specular Highlights     |    ✅     | Auto Video Refraction    |    ✅     |
-| Interactive Tilt Effect |    ✅     | Animate Lenses           |    ✅     |
-| Magnification Control   |    ✅     | `on.init` Callback       |    ✅     |
-| Dynamic Element Support |    ✅     |                          |           |
+| Feature                                | Supported | Feature                  | Supported |
+| :------------------------------------- | :-------: | :----------------------- | :-------: |
+| Real-time Refraction (static content)  |    ✅     | GSAP-Ready Animations    |    ✅     |
+| Real-time Refraction (video)           |    ✅     | Lightweight & Performant |    ✅     |
+| Real-time Refraction (text animations) |    ✅     | Seamless Scroll Sync     |    ✅     |
+| Real-time Refraction (CSS animations)  |    ❌     | Auto-Resize Handling     |    ✅     |
+| Adjustable Bevel                       |    ✅     | Auto Video Refraction    |    ✅     |
+| Frosted Glass Effect                   |    ✅     | Animate Lenses           |    ✅     |
+| Dynamic Shadows                        |    ✅     | `on.init` Callback       |    ✅     |
+| Specular Highlights                    |    ✅     |                          |           |
+| Interactive Tilt Effect                |    ✅     |                          |           |
+| Magnification Control                  |    ✅     |                          |           |
+| Dynamic Element Support                |    ✅     |                          |           |
 
 ---
 
