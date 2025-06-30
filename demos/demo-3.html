@@ -200,12 +200,6 @@
         opacity: 0.3;
       }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jquery.ripples@0.6.3/dist/jquery.ripples.min.js"></script>
   </head>
   <body>
     <div class="ripples"></div>
@@ -257,14 +251,23 @@
       </a>
     </div>
 
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery.ripples@0.6.3/dist/jquery.ripples.min.js"></script>
+
     <!-- Scripts -->
     <script src="/scripts/html2canvas.min.js"></script>
     <script src="/scripts/liquidGL.js"></script>
     <script>
       let glassEffect; // Declare in a higher scope to be accessible across event listeners
+      let gui, glassFolder;
 
       document.addEventListener("DOMContentLoaded", () => {
-        initializeLiquidGL(); // Call immediately on DOM ready
+        initializeliquidGL(); // Call immediately on DOM ready
 
         // Ripples
         $(".ripples").each(function () {
@@ -278,11 +281,9 @@
         });
 
         // A function to initialize the glass effect and its controls
-        function initializeLiquidGL() {
-          let gui, glassFolder;
-
-          // Initialise the Liquid Glass effect on our menu
-          glassEffect = LiquidGL({
+        function initializeliquidGL() {
+          // Initialize the Liquid Glass effect on our menu
+          glassEffect = liquidGL({
             target: ".morph",
             refraction: 0,
             bevelDepth: 0.052,
@@ -295,14 +296,13 @@
             reveal: "fade",
           });
 
-          // Build GUI once effect is ready (multi build may return array)
           const lensList = Array.isArray(glassEffect)
             ? glassEffect
             : [glassEffect];
           const firstLens = lensList[0];
 
           gui = new lil.GUI();
-          glassFolder = gui.addFolder("LiquidGL Effect");
+          glassFolder = gui.addFolder("liquidGL Effect");
 
           const updateAll = (key, value) => {
             lensList.forEach((ln) => {
@@ -369,8 +369,8 @@
             lenis.raf(time * 1000);
             if (window.glassEffect) {
               if (Array.isArray(window.glassEffect)) {
-                if (window.__LiquidGLRenderer__)
-                  window.__LiquidGLRenderer__.render();
+                if (window.__liquidGLRenderer__)
+                  window.__liquidGLRenderer__.render();
               } else if (!window.glassEffect.options.specular) {
                 window.glassEffect.render();
               }

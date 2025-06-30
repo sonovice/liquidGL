@@ -2,26 +2,38 @@
 
 <a href="https://liquidgl.naughtyduk.com"><img src="/assets/liquidGlass-promo.gif" alt="liquidGL" style="width: 100%"/></a>
 
-`BETA Release`
+**BETA Release** - `now with real-time support`\*
 
-> [!IMPORTANT]
-> The liquidGL-experimental.js version and related demo are WIP, as we try to figure out real time refraction of video/content animations. DO NOT USE THE EXPERIMENTAL VERSION YET.
+> [!IMPORTANT] `liquidGL` is in **BETA** and has been built and tested in Google Chrome, we are still testing performance against other browsers. \*Note real-time support for content under the `target` currently works for videos and text animations but not CSS transforms i.e marquees etc.
 
-liquidGL turns any fixed-position element into a perfectly refracted, glossy "glass pane" rendered in WebGL.
+`liquidGL` turns any fixed-position element into a perfectly refracted, glossy "glass pane" rendered in WebGL.
 
 <a href="https://liquidgl.naughtyduk.com" target="_blank" rel="noopener noreferrer"><strong>TRY IT OUT</strong></a>
 
-<a href="https://liquidgl.naughtyduk.com/demos/demo-1.html" target="_blank" rel="noopener noreferrer"><strong>DEMO 1</strong></a> | <a href="https://liquidgl.naughtyduk.com/demos/demo-2.html" target="_blank" rel="noopener noreferrer"><strong>DEMO 2</strong></a> | <a href="https://liquidgl.naughtyduk.com/demos/demo-3.html" target="_blank" rel="noopener noreferrer"><strong>DEMO 3</strong></a> | <a href="https://liquidgl.naughtyduk.com/demos/demo-4.html" target="_blank" rel="noopener noreferrer"><strong>DEMO 4</strong></a> | <a href="https://liquidgl.naughtyduk.com/demos/demo-5.html" target="_blank" rel="noopener noreferrer"><strong>DEMO 5</strong></a> | <a href="https://liquidgl.naughtyduk.com/demos/experimental-1.html" target="_blank" rel="noopener noreferrer"><strong>DEMO 1 (Experimental)</strong></a>
+<a href="https://liquidgl.naughtyduk.com/demos/demo-1.html" target="_blank" rel="noopener noreferrer"><strong>DEMO 1</strong></a> | <a href="https://liquidgl.naughtyduk.com/demos/demo-2.html" target="_blank" rel="noopener noreferrer"><strong>DEMO 2</strong></a> | <a href="https://liquidgl.naughtyduk.com/demos/demo-3.html" target="_blank" rel="noopener noreferrer"><strong>DEMO 3</strong></a> | <a href="https://liquidgl.naughtyduk.com/demos/demo-4.html" target="_blank" rel="noopener noreferrer"><strong>DEMO 4</strong></a> | <a href="https://liquidgl.naughtyduk.com/demos/demo-5.html" target="_blank" rel="noopener noreferrer"><strong>DEMO 5</strong></a>
 
 ## Overview
 
-`liquidGL` recreates Apple's upcoming "Liquid Glass" aesthetic in the browser with an ultra-light WebGL shader. WebGL cannot read live pixels for security reasons, the library currently takes a single high-resolution snapshot of the page when you call `LiquidGL()`. This keeps performance smooth, but it also means the pane can't refract content that changes afterwards, such as playing video or animations. However, we are actively working on a solution for this and have videos working in dev, we are now attempting to apply similar logic to content like GSAP SplitText animations etc. Hold Tight.
+`liquidGL` recreates Apple's "Liquid Glass" aesthetic in the browser with an ultra-light WebGL shader. It turns any DOM element into a beautiful, refracting glass pane. To overcome WebGL's security limitations on reading live screen pixels, `liquidGL` uses an innovative offscreen rendering technique. This allows it to refract dynamic content like videos, text animations, and more in real-time, delivering a smooth and interactive experience.
+
+### Key Features
+
+| Feature                 | Supported | Feature                  | Supported |
+| :---------------------- | :-------: | :----------------------- | :-------: |
+| Real-time Refraction    |    ✅     | GSAP-Ready Animations    |    ✅     |
+| Adjustable Bevel        |    ✅     | Lightweight & Performant |    ✅     |
+| Frosted Glass Effect    |    ✅     | Seamless Scroll Sync     |    ✅     |
+| Dynamic Shadows         |    ✅     | Auto-Resize Handling     |    ✅     |
+| Specular Highlights     |    ✅     | Auto Video Refraction    |    ✅     |
+| Interactive Tilt Effect |    ✅     | Animate Lenses           |    ✅     |
+| Magnification Control   |    ✅     | `on.init` Callback       |    ✅     |
+| Dynamic Element Support |    ✅     |                          |           |
 
 ---
 
 ## Prerequisites
 
-Add **both** of the following scripts before you initialise liquidGL (normally at the end of the `<body>`):
+Add **both** of the following scripts before you initialise `liquidGL()` (normally at the end of the `<body>`):
 
 ```html
 <!-- html2canvas – DOM snapshotter (required) -->
@@ -34,7 +46,7 @@ Add **both** of the following scripts before you initialise liquidGL (normally a
 <script src="/scripts/liquidGL.js" defer></script>
 ```
 
-> `html2canvas` provides the high-resolution snapshot of the page background that liquidGL refracts. The library will throw if either dependency is missing.
+> `html2canvas` provides the high-resolution snapshot of the page background that `liquidGL` refracts. The library will throw if either dependency is missing.
 
 ---
 
@@ -45,37 +57,38 @@ Set up your HTML structure first. You will have a fixed parent element to wrap e
 ```html
 <!-- Example HTML structure -->
 <body>
-  <!-- A container to position your glass element above the body -->
-  <div class="fixed-container">
-    <!-- Target (glassified) -->
-    <div class="selector">
-      <!-- Content -->
-      <div class="content">
-        <img src="/example.svg" alt="Alt Text" />
-        <p>This example text content will appear on top of the glass.</p>
-      </div>
+  <!-- Target (glassified) -->
+  <div class="liquidGL">
+    <!-- Content -->
+    <div class="content">
+      <img src="/example.svg" alt="Alt Text" />
+      <p>This example text content will appear on top of the glass.</p>
     </div>
   </div>
 </body>
 ```
 
-> Make sure that your `.fixed-container` element has a high z-index so that it sits over your page content.
+> Make sure that your `target` element has a high z-index so that it sits over your page content. Any content with a higher z-index than the `target` will be excluded from the lens, i.e a modal video player that you don't want to stain the lens.
 
 Next, initialise the library with the selector for your target element.
 
 ```html
 <script>
   document.addEventListener("DOMContentLoaded", () => {
-    const glassEffect = LiquidGL({
+    const glassEffect = liquidGL({
       snapshot: "body", // The area used for refraction, <body> recommended and default
-      target: ".selector", // CSS selector for the element to glass-ify
+      target: ".liquidGL", // CSS selector for the element(s) to glass-ify
+      resolution: 2.0, // The quality of the snapshot
       refraction: 0.01, // Base refraction strength (0–1)
       bevelDepth: 0.08, // Intensity of the edge bevel (0–1)
       bevelWidth: 0.15, // Width of the bevel as a proportion of the element (0–1)
-      frost: 2, // Subtle blur radius in px. 0 = crystal clear
+      frost: 0, // Subtle blur radius in px. 0 = crystal clear
       shadow: true, // Adds a soft drop-shadow under the pane
       specular: true, // Animated light highlights (slightly more GPU)
       reveal: "fade", // Reveal animation
+      tilt: false, // Whether tilt on hover is enabled
+      tiltFactor: 5, // If tilt is enabled, how much tilt
+      magnify: 1, // Magnification of lens content
       on: {
         init(instance) {
           // The `init` callback fires once liquidGL has taken its snapshot
@@ -93,52 +106,81 @@ Next, initialise the library with the selector for your target element.
 
 ---
 
-## Optionally sync with Lenis/GSAP
+## Dynamic Rendering
+
+`liquidGL` can refract dynamic content like animations in real-time. To make this work, you must "register" any dynamic elements that will intersect with your glass pane. This tells `liquidGL` to monitor them and update the texture when they change.
+
+> **Note:** Videos are automatically detected and do not need to be registered.
+
+Register dynamic elements _after_ initializing `liquidGL()` but _before_ calling `liquidGL.syncWith()` (if used). You can register elements using a CSS selector string or by passing an array of DOM elements.
+
+```javascript
+// After initializing liquidGL...
+const glassEffect = liquidGL({
+  target: ".liquidGL",
+  // ... other options
+});
+
+// Register an element by its CSS selector
+liquidGL.registerDynamic(".my-animated-element");
+
+// Register multiple elements (e.g., from a GSAP SplitText animation)
+const mySplitText = SplitText.create(".my-text", { type: "lines" });
+liquidGL.registerDynamic(mySplitText.lines); // Pass the array of line elements
+```
+
+---
+
+## Optionally sync with Smooth Scrolling Libraries
+
+`liquidGL` includes a `syncWith()` helper to automatically integrate with popular smooth-scrolling libraries like Lenis and Locomotive Scroll. It handles the render loop synchronization for you.
+
+> Simply call `liquidGL.syncWith()` after initializing `liquidGL`.
 
 ```html
 <script>
-  window.addEventListener("load", function () {
-    // Lenis & GSAP ScrollTrigger integration
-    const lenis = new Lenis();
-
-    lenis.on("scroll", ScrollTrigger.update);
-
-    gsap.ticker.add((time) => {
-      lenis.raf(time * 1000);
-      if (window.glassEffect) {
-        if (Array.isArray(window.glassEffect)) {
-          if (window.__LiquidGLRenderer__) window.__LiquidGLRenderer__.render();
-        } else if (!window.glassEffect.options.specular) {
-          window.glassEffect.render();
-        }
-      }
+  document.addEventListener("DOMContentLoaded", () => {
+    // First, initialize liquidGL
+    const glassEffect = liquidGL({
+      target: ".liquidGL",
+      // ... other options
     });
 
-    gsap.ticker.lagSmoothing(0);
+    // Sync with scrolling libraries. This auto-detects libraries like
+    // Lenis or Locomotive Scroll and returns their instances if found.
+    const { lenis, locomotiveScroll } = liquidGL.syncWith();
+
+    // You can now use the 'lenis' or 'locomotiveScroll' instances if needed.
   });
 </script>
 ```
 
-> Don't forget to include Lenis and GSAP before calling them in the load event.
+> Make sure to include the scroll library scripts (e.g., Lenis, GSAP) before your main script. The `syncWith()` helper must be called **after** `liquidGL()` has been called.
+
+---
 
 ## Parameters
 
-| Option       | Type     | Default     | Description                                                                                                   |
-| ------------ | -------- | ----------- | ------------------------------------------------------------------------------------------------------------- |
-| `snapshot`   | string   | `'body'`    | CSS selector for the element to snapshot. Defaults to `<body>`.                                               |
-| `target`     | string   | `.selector` | CSS selector of the element(s) that should be glassified, all elements with this selector will be glassified. |
-| `refraction` | number   | `0.01`      | Base refraction offset applied across the pane.                                                               |
-| `bevelDepth` | number   | `0.08`      | Additional refraction applied on the very edge to simulate depth.                                             |
-| `bevelWidth` | number   | `0.15`      | Width of the bevel zone, expressed as a fraction of the shortest side.                                        |
-| `frost`      | number   | `0`         | Size of the blur kernel in **pixels** for a frosted glass look.                                               |
-| `shadow`     | boolean  | `true`      | Toggles a subtle drop-shadow under the pane.                                                                  |
-| `specular`   | boolean  | `true`      | Enables animated specular highlights that move with time.                                                     |
-| `tilt`       | boolean  | `false`     | Adds a 3-D tilt interaction on cursor/touch movement (rotates the pane).                                      |
-| `tiltFactor` | number   | `5`         | Depth of the tilt in degrees (0-25 recommended). Higher = steeper tilt.                                       |
-| `reveal`     | string   | `'fade'`    | - `None` - immediately render the `target` element.<br>- `Fade` - a smooth fade in of the `target` element.   |
-| `on.init`    | function | `—`         | Runs once the first full render completes. Receives the instance.                                             |
+| Option       | Type     | Default       | Description                                                                                      |
+| ------------ | -------- | ------------- | ------------------------------------------------------------------------------------------------ |
+| `target`     | string   | `'.liquidGL'` | **Required.** CSS selector for the element(s) to glassify.                                       |
+| `snapshot`   | string   | `'body'`      | CSS selector for the element to snapshot.                                                        |
+| `resolution` | number   | `2.0`         | Resolution of the background snapshot (clamped 0.1–3.0). Higher is sharper but uses more memory. |
+| `refraction` | number   | `0.01`        | Base refraction offset applied across the pane (0–1).                                            |
+| `bevelDepth` | number   | `0.08`        | Additional refraction on the edge to simulate depth (0–1).                                       |
+| `bevelWidth` | number   | `0.15`        | Width of the bevel zone as a fraction of the shortest side (0–1).                                |
+| `frost`      | number   | `0`           | Blur radius in pixels for a frosted look. `0` is clear.                                          |
+| `shadow`     | boolean  | `true`        | Toggles a subtle drop-shadow under the pane.                                                     |
+| `specular`   | boolean  | `true`        | Enables animated specular highlights that move with time.                                        |
+| `reveal`     | string   | `'fade'`      | Reveal animation.<br>- `'none'`: Renders immediately.<br>- `'fade'`: Smoothly fades in.          |
+| `tilt`       | boolean  | `false`       | Enables 3D tilt interaction on cursor movement.                                                  |
+| `tiltFactor` | number   | `5`           | Depth of the tilt in degrees (0–25 recommended).                                                 |
+| `magnify`    | number   | `1`           | Magnification factor of the lens (clamped 0.001–3.0). `1` is no magnification.                   |
+| `on.init`    | function | `—`           | Callback that runs once the first render completes. Receives the lens instance.                  |
 
-> The `target` parameter is required, all other parameters are optional.
+> The `target` parameter is required; all others are optional.
+
+---
 
 ## Presets
 
@@ -156,39 +198,43 @@ Below are some ready-made configurations you can copy-paste. Feel free to tweak 
 
 ## FAQ
 
-| Question                                                                 | Answer                                                                                                                                                                                                                                                                                                                                                               |
-| :----------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Is there a resize handler?                                               | Yes resize is handled in the library and debounced to 250ms for performance.                                                                                                                                                                                                                                                                                         |
-| Does the effect work on mobile?                                          | Yes the library handles all 3 versions of WebGL and provides a frosted CSS `backdrop-filter` as a backup for older devices.                                                                                                                                                                                                                                          |
-| I have a preloader, how should I initialise liquidGL?                    | Run your preloader as normal, then once the preloader disappears and page content is visible, you can call `LiquidGL();`.                                                                                                                                                                                                                                            |
-| What is the correct way to use liquidGL with page animations?            | Lets say you have a preloader, above the fold intro animations and scroll animations on your page. You would:<br><br>1) animate your preloader and intro animations<br>2) once complete call `LiquidGL();`<br>3) in the `on.init();` callback, set your initial states for elements, i.e setting the start position of any animations like transforms, SplitText etc |
-| Can I use liquidGL on multiple elements?                                 | Yes, any element which has the class declared as your `target` will be glassified.                                                                                                                                                                                                                                                                                   |
-| Will the library exceed WebGL contexts or have other performance issues? | No, the library uses a shared canvas for all instances, we have tested up to 30 elements on one page and we were not able to cause performance problems or crashes.                                                                                                                                                                                                  |
-| Are there any animation limitations?                                     | It depends on what you're trying to do, rotation and scale are expensive CPU/GPU processes, additionally `shadow` `specular` and `tilt` should be used with care when you have lots of instances or complex animations as they can clog the render pipeline.                                                                                                         |
+| Question                                                                 | Answer                                                                                                                                                                                                                                                                                                                                                                                                         |
+| :----------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Is there a resize handler?                                               | Yes resize is handled in the library and debounced to 250ms for performance.                                                                                                                                                                                                                                                                                                                                   |
+| Does the effect work on mobile?                                          | Yes the library handles all 3 versions of WebGL and provides a frosted CSS `backdrop-filter` as a backup for older devices.                                                                                                                                                                                                                                                                                    |
+| I have a preloader, how should I initialise `liquidGL()`?                | Add the `data-liquid-ignore` attribute to your preloader's top-level container to exclude it from the snapshot. You can then call `liquidGL()` inside a `DOMContentLoaded` listener as you normally would.                                                                                                                                                                                                     |
+| What is the correct way to use `liquidGL` with page animations?          | Lets say you have a preloader, above the fold intro animations and scroll animations on your page. You would:<br><br>1) set the `data-liquid-ignore` attribute on your preloader<br>2) animate your preloader and set up your initial animation states<br>3) then call `liquidGL();`<br>4) optionally, in the `on.init();` callback, you can run post snapshot scripts, such as animating the `target` element |
+| Can I use `liquidGL` on multiple elements?                               | Yes, any element which has the class declared as your `target` will be glassified. Note **all elements must use the same `z-index`** due to shared canvas optimisations, if you use different `z-index` values for multiple targets, the highest value will be used by `liquidGL`.                                                                                                                             |
+| Will the library exceed WebGL contexts or have other performance issues? | No, the library uses a shared canvas for all instances, we have tested up to 30 elements on one page and we were not able to cause performance problems or crashes.                                                                                                                                                                                                                                            |
+| Are there any animation limitations?                                     | It depends on what you're trying to do, rotation and scale are expensive CPU/GPU processes, additionally `shadow` `specular` and `tilt` should be used with care when you have lots of instances or complex animations as they can clog the render pipeline.                                                                                                                                                   |
 
 ---
 
 ## Important Notes
 
-- Animated or video content **behind** the pane is not re-captured in real-time; the snapshot is static for performance and security reasons. Unfortunately there is no current workaround.
+- For dynamic content to be refracted in real-time, you must register the element(s) with `liquidGL.registerDynamic()`. It is crucial to set the initial state of your animations **before** calling `liquidGL()` to ensure they are captured correctly.
+- You can have multiple instances on one page **but they must share the same `z-index` value**. If you specify different `z-index` values, `liquidGL` will use the highest `z-index` for all elements with the `target` selector. This is because the effect uses a shared canvas to prevent WebGL context issues, there is no work around to this unfortunately.
 - To improve performance on complex pages, you can snapshot a smaller, specific element like a background container instead of the whole page. Use the `snapshot` option with a CSS selector (e.g., `snapshot: '.my-background'`). This reduces texture memory and improves performance.
-- All page content must be present (visible in the DOM) **before** you initialise liquidGL. Deferred/scroll-triggered animations should have their initial states set **in** `on.init`.
-- The initial capture is synchronous and may block the main thread momentarily; call `LiquidGL()` inside a `DOMContentLoaded` or `load` handler to avoid jank during critical rendering.
-- Extremely long documents can exceed GPU texture limits, causing memory or performance issues. Consider segmenting very long pages or reducing `scaleFactor` (see source).
+- The initial capture is asynchronous. Call `liquidGL()` inside a `DOMContentLoaded` or `load` handler to ensure content is available to the snapshot.
+- Extremely long documents can exceed GPU texture limits, causing memory or performance issues. Consider segmenting very long pages (see source) or reducing the `resolution` parameter.
+- `liquidGL` uses 3 levels of `z-index`, the `target` element will match the `z-index` value you set on the target element(s), the `shadow` property uses `z-index -1 ` and the `tilt` property uses `z-index +1`, make sure you leave enough room for all 3 layers to prevent stacking issues.
 - As with all WebGL effects, any **image** content inside the `target` element must have permissive `Access-Control-Allow-Origin` headers set to prevent CORS issues.
 
 ---
 
 ## Browser Support
 
-The liquidGL library is compatible with all WebGL enabled browsers on desktop, tablet and mobile devices, including Google Chrome, Safari and Firefox.
+The `liquidGL` library is compatible with all WebGL enabled browsers on desktop, tablet and mobile devices.
+
+> ![NOTE]
+> We are still testing non-Chromium browsers, and are aware of some performance issues in Safari specifically, these will be fixed, in the meantime please use with care.
 
 | Browser        | Supported |
 | :------------- | :-------: |
 | Google Chrome  |    Yes    |
-| Safari         |    Yes    |
-| Firefox        |    Yes    |
-| Microsoft Edge |    Yes    |
+| Safari         |    TBC    |
+| Firefox        |    TBC    |
+| Microsoft Edge |    TBC    |
 
 ---
 
@@ -200,11 +246,11 @@ The liquidGL library is compatible with all WebGL enabled browsers on desktop, t
 
 **Content Visibility**
 
-> It is recommended to use `z-index: 3;` on the content inside your target element to make it sit on top of the lens. You can also combine this with `mix-blend-mode: difference;` on the `fixed-container` for better legibility.
+> It is recommended to use `z-index: 3;` on the content inside your target element to make it sit on top of the lens. You can also combine this with `mix-blend-mode: difference;` for better legibility.
 
 **Border-radius**
 
-> liquidGL automatically inherits the `border-radius` of the `target` element, ensuring the refraction respects rounded corners without any extra configuration. If you animate the `border-radius` of your `target` element i.e on scroll, the bevel will animate in real time to remain in sync.
+> `liquidGL` automatically inherits the `border-radius` of the `target` element, ensuring the refraction respects rounded corners without any extra configuration. If you animate the `border-radius` of your `target` element i.e on scroll, the bevel will animate in real time to remain in sync.
 
 ---
 

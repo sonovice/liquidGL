@@ -166,12 +166,6 @@
         }
       }
     </style>
-    <!-- Dependencies -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
   </head>
   <body>
     <div class="main-content">
@@ -227,15 +221,22 @@
       </div>
     </div>
 
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+
     <!-- Scripts -->
     <script src="/scripts/html2canvas.min.js"></script>
     <script src="/scripts/liquidGL.js"></script>
     <script>
       document.addEventListener("DOMContentLoaded", () => {
-        window.glassEffect = LiquidGL({
+        // Initialize the liquidGL effect
+        window.glassEffect = liquidGL({
           target: ".marquee-card",
-          refraction: 0.015,
-          bevelDepth: 0.08,
+          refraction: 0,
+          bevelDepth: 0.052,
           bevelWidth: 0.18,
           frost: 2,
           shadow: true,
@@ -245,24 +246,24 @@
           reveal: "fade",
         });
 
-        // --- lil-gui for multi-lens setup ---
-        if (
-          window.glassEffect &&
-          Array.isArray(window.glassEffect) &&
-          window.glassEffect.length > 0
-        ) {
-          const gui = new lil.GUI();
-          const glassFolder = gui.addFolder("LiquidGL Effect");
-          const firstLens = window.glassEffect[0];
+        // Build GUI once effect is ready (multi build may return array)
+        const lensList = Array.isArray(window.glassEffect)
+          ? window.glassEffect
+          : [window.glassEffect];
+        const firstLens = lensList[0];
 
-          const updateAllLenses = (key, value) => {
-            window.glassEffect.forEach((lens) => {
-              lens.options[key] = value;
+        if (firstLens) {
+          const gui = new lil.GUI();
+          const glassFolder = gui.addFolder("liquidGL Effect");
+
+          const updateAll = (key, value) => {
+            lensList.forEach((ln) => {
+              ln.options[key] = value;
               if (key === "shadow") {
-                lens.setShadow(value);
+                ln.setShadow(value);
               }
               if (key === "tilt") {
-                lens.setTilt(value);
+                ln.setTilt(value);
               }
             });
           };
@@ -270,67 +271,60 @@
           glassFolder
             .add(firstLens.options, "refraction", 0, 0.1, 0.001)
             .name("Refraction")
-            .onChange((value) => updateAllLenses("refraction", value));
+            .onChange((value) => updateAll("refraction", value));
 
           glassFolder
             .add(firstLens.options, "bevelDepth", 0, 0.2, 0.001)
             .name("Bevel Depth")
-            .onChange((value) => updateAllLenses("bevelDepth", value));
+            .onChange((value) => updateAll("bevelDepth", value));
 
           glassFolder
             .add(firstLens.options, "bevelWidth", 0, 0.5, 0.001)
             .name("Bevel Width")
-            .onChange((value) => updateAllLenses("bevelWidth", value));
+            .onChange((value) => updateAll("bevelWidth", value));
 
           glassFolder
             .add(firstLens.options, "frost", 0, 10, 0.1)
             .name("Frost")
-            .onChange((value) => updateAllLenses("frost", value));
+            .onChange((value) => updateAll("frost", value));
 
           glassFolder
             .add(firstLens.options, "specular")
             .name("Specular")
-            .onChange((value) => updateAllLenses("specular", value));
+            .onChange((value) => updateAll("specular", value));
 
           glassFolder
             .add(firstLens.options, "shadow")
             .name("Enable Shadow")
-            .onChange((value) => updateAllLenses("shadow", value));
+            .onChange((value) => updateAll("shadow", value));
 
           glassFolder
             .add(firstLens.options, "tilt")
             .name("Tilt")
-            .onChange((value) => updateAllLenses("tilt", value));
+            .onChange((value) => updateAll("tilt", value));
 
           glassFolder
             .add(firstLens.options, "tiltFactor", 0, 25, 0.1)
             .name("Tilt Factor")
-            .onChange((value) => updateAllLenses("tiltFactor", value));
+            .onChange((value) => updateAll("tiltFactor", value));
 
           glassFolder.close();
         }
       });
-      window.addEventListener("load", function () {
-        // Lenis & GSAP ScrollTrigger integration
-        const lenis = new Lenis();
 
-        lenis.on("scroll", ScrollTrigger.update);
+      // Lenis & GSAP ScrollTrigger integration
+      const lenis = new Lenis();
 
-        gsap.ticker.add((time) => {
-          lenis.raf(time * 1000);
-          if (window.glassEffect) {
-            // For multi-instance build, glassEffect may be an array; call renderer directly.
-            if (Array.isArray(window.glassEffect)) {
-              if (window.__LiquidGLRenderer__)
-                window.__LiquidGLRenderer__.render();
-            } else if (!window.glassEffect.options.specular) {
-              window.glassEffect.render();
-            }
-          }
-        });
+      lenis.on("scroll", ScrollTrigger.update);
 
-        gsap.ticker.lagSmoothing(0);
+      gsap.ticker.add((time) => {
+        lenis.raf(time * 1000);
+        if (window.__liquidGLRenderer__) {
+          window.__liquidGLRenderer__.render();
+        }
       });
+
+      gsap.ticker.lagSmoothing(0);
     </script>
   </body>
 </html>

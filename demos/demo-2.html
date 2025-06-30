@@ -390,12 +390,6 @@
         z-index: 3;
       }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jquery.ripples@0.6.3/dist/jquery.ripples.min.js"></script>
   </head>
   <body>
     <div class="ripples"></div>
@@ -438,14 +432,13 @@
           </div>
         </div>
 
-        <!-- The menu element that will have the glass effect applied -->
         <div class="card-anchor">
           <a
             href="https://github.com/naughtyduk/liquidGL"
             style="text-decoration: none"
             target="_blank"
           >
-            <div class="menu-wrap credit-card">
+            <div class="menu-wrap credit-card-glass">
               <div class="card-top">
                 <img src="/assets/card-chip.svg" alt="Chip" class="card-chip" />
                 <img
@@ -478,7 +471,7 @@
             alt="NaughtyDuk©"
             class="form-logo"
           />
-          <h2 class="login-title">LiquidGL Bank</h2>
+          <h2 class="login-title">liquidGL Bank</h2>
           <form class="login-form" onsubmit="return false">
             <div class="login-field">
               <label for="email" class="login-label">Email</label>
@@ -515,6 +508,14 @@
       </div>
     </div>
 
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery.ripples@0.6.3/dist/jquery.ripples.min.js"></script>
+
     <!-- Scripts -->
     <script src="/scripts/html2canvas.min.js"></script>
     <script src="/scripts/liquidGL.js"></script>
@@ -522,7 +523,7 @@
       let glassEffect; // Declare in a higher scope to be accessible across event listeners
 
       document.addEventListener("DOMContentLoaded", () => {
-        initializeLiquidGL(); // Call immediately on DOM ready
+        initializeliquidGL(); // Call immediately on DOM ready
 
         // Ripples
         $(".ripples").each(function () {
@@ -536,12 +537,12 @@
         });
 
         // A function to initialize the glass effect and its controls
-        function initializeLiquidGL() {
+        function initializeliquidGL() {
           let gui, glassFolder;
           // Initialize the Liquid Glass effect on our menu
-          glassEffect = LiquidGL({
+          glassEffect = liquidGL({
             snapshot: ".main-content",
-            target: ".menu-wrap",
+            target: ".credit-card-glass",
             refraction: 0,
             bevelDepth: 0.1,
             bevelWidth: 0.17,
@@ -549,70 +550,78 @@
             shadow: true,
             specular: true,
             reveal: "fade",
+            tilt: true,
+            tiltFactor: 25,
           });
 
-          // Build GUI after LiquidGL initialised (multi-awareness)
-          const lensList = Array.isArray(glassEffect)
-            ? glassEffect
-            : [glassEffect];
-          const firstLens = lensList[0];
+          // Build GUI after liquidGL initialised (multi-awareness)
+          if (glassEffect) {
+            const lensList = Array.isArray(glassEffect)
+              ? glassEffect
+              : [glassEffect];
+            const firstLens = lensList[0];
 
-          gui = new lil.GUI();
-          glassFolder = gui.addFolder("LiquidGL Effect");
+            gui = new lil.GUI();
+            glassFolder = gui.addFolder("liquidGL Effect");
 
-          const updateAll = (key, value) => {
-            lensList.forEach((ln) => {
-              ln.options[key] = value;
-              if (key === "shadow") ln.setShadow(value);
-              if (key === "tilt") ln.setTilt(value);
-            });
-          };
+            const updateAll = (key, value) => {
+              lensList.forEach((ln) => {
+                if (ln) {
+                  ln.options[key] = value;
+                  if (key === "shadow") ln.setShadow(value);
+                  if (key === "tilt") ln.setTilt(value);
+                }
+              });
+            };
 
-          glassFolder
-            .add(firstLens.options, "refraction", 0, 0.1, 0.001)
-            .name("Refraction")
-            .onChange((v) => updateAll("refraction", v));
+            if (firstLens) {
+              glassFolder
+                .add(firstLens.options, "refraction", 0, 0.1, 0.001)
+                .name("Refraction")
+                .onChange((v) => updateAll("refraction", v));
 
-          glassFolder
-            .add(firstLens.options, "bevelDepth", 0, 0.2, 0.001)
-            .name("Bevel Depth")
-            .onChange((v) => updateAll("bevelDepth", v));
+              glassFolder
+                .add(firstLens.options, "bevelDepth", 0, 0.2, 0.001)
+                .name("Bevel Depth")
+                .onChange((v) => updateAll("bevelDepth", v));
 
-          glassFolder
-            .add(firstLens.options, "bevelWidth", 0, 0.5, 0.001)
-            .name("Bevel Width")
-            .onChange((v) => updateAll("bevelWidth", v));
+              glassFolder
+                .add(firstLens.options, "bevelWidth", 0, 0.5, 0.001)
+                .name("Bevel Width")
+                .onChange((v) => updateAll("bevelWidth", v));
 
-          glassFolder
-            .add(firstLens.options, "frost", 0, 10, 0.1)
-            .name("Frost")
-            .onChange((v) => updateAll("frost", v));
+              glassFolder
+                .add(firstLens.options, "frost", 0, 10, 0.1)
+                .name("Frost")
+                .onChange((v) => updateAll("frost", v));
 
-          glassFolder
-            .add(firstLens.options, "specular")
-            .name("Specular")
-            .onChange((v) => updateAll("specular", v));
+              glassFolder
+                .add(firstLens.options, "specular")
+                .name("Specular")
+                .onChange((v) => updateAll("specular", v));
 
-          glassFolder
-            .add(firstLens.options, "shadow")
-            .name("Shadow")
-            .onChange((v) => updateAll("shadow", v));
+              glassFolder
+                .add(firstLens.options, "shadow")
+                .name("Shadow")
+                .onChange((v) => updateAll("shadow", v));
 
-          glassFolder
-            .add(firstLens.options, "tilt")
-            .name("Tilt")
-            .onChange((v) => updateAll("tilt", v));
+              glassFolder
+                .add(firstLens.options, "tilt")
+                .name("Tilt")
+                .onChange((v) => updateAll("tilt", v));
 
-          glassFolder
-            .add(firstLens.options, "tiltFactor", 0, 25, 0.1)
-            .name("Tilt Factor")
-            .onChange((v) => updateAll("tiltFactor", v));
+              glassFolder
+                .add(firstLens.options, "tiltFactor", 0, 25, 0.1)
+                .name("Tilt Factor")
+                .onChange((v) => updateAll("tiltFactor", v));
 
-          glassFolder
-            .add(firstLens.options, "reveal", ["none", "fade"])
-            .name("Reveal");
+              glassFolder
+                .add(firstLens.options, "reveal", ["none", "fade"])
+                .name("Reveal");
 
-          glassFolder.close();
+              glassFolder.close();
+            }
+          }
         }
 
         window.addEventListener("load", function () {
@@ -651,8 +660,8 @@
             lenis.raf(time * 1000);
             if (window.glassEffect) {
               if (Array.isArray(window.glassEffect)) {
-                if (window.__LiquidGLRenderer__)
-                  window.__LiquidGLRenderer__.render();
+                if (window.__liquidGLRenderer__)
+                  window.__liquidGLRenderer__.render();
               } else if (!window.glassEffect.options.specular) {
                 window.glassEffect.render();
               }
