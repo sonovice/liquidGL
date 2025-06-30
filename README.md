@@ -4,8 +4,7 @@
 
 **BETA Release** - `now with real-time support`\*
 
-> [!IMPORTANT]
-> `liquidGL` is in **BETA** and has been built and tested in Google Chrome, we are still testing performance against other browsers. \*Note real-time support for content under the `target` currently works for videos and text animations but not CSS transforms i.e marquees etc.
+> [!IMPORTANT] > `liquidGL` is in **BETA** and has been built and tested in Google Chrome, we are still testing performance against other browsers. \*Note real-time support for content under the `target` currently works for videos and text animations but not CSS transforms i.e marquees etc.
 
 `liquidGL` turns any fixed-position element into a perfectly refracted, glossy "glass pane" rendered in WebGL.
 
@@ -53,7 +52,7 @@ Add **both** of the following scripts before you initialise `liquidGL()` (normal
 
 ## Quick start
 
-Set up your HTML structure first. You will have a fixed parent element to wrap everything and place it over your page content, a `target` element that will receive the glass effect, and a child element for your content (excluded from glass effect).
+Set up your HTML structure first. You will have a `target` element that will receive the glass effect, and a child element for your content (excluded from glass effect).
 
 ```html
 <!-- Example HTML structure -->
