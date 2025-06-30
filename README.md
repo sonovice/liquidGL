@@ -4,7 +4,8 @@
 
 **BETA Release** - `now with real-time support`\*
 
-> [!IMPORTANT] `liquidGL` is in **BETA** and has been built and tested in Google Chrome, we are still testing performance against other browsers. \*Note real-time support for content under the `target` currently works for videos and text animations but not CSS transforms i.e marquees etc.
+> [!IMPORTANT]
+> `liquidGL` is in **BETA** and has been built and tested in Google Chrome, we are still testing performance against other browsers. \*Note real-time support for content under the `target` currently works for videos and text animations but not CSS transforms i.e marquees etc.
 
 `liquidGL` turns any fixed-position element into a perfectly refracted, glossy "glass pane" rendered in WebGL.
 
