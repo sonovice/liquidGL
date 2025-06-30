@@ -219,7 +219,7 @@ Below are some ready-made configurations you can copy-paste. Feel free to tweak 
 - To improve performance on complex pages, you can snapshot a smaller, specific element like a background container instead of the whole page. Use the `snapshot` option with a CSS selector (e.g., `snapshot: '.my-background'`). This reduces texture memory and improves performance.
 - The initial capture is asynchronous. Call `liquidGL()` inside a `DOMContentLoaded` or `load` handler to ensure content is available to the snapshot.
 - Extremely long documents can exceed GPU texture limits, causing memory or performance issues. Consider segmenting very long pages (see source) or reducing the `resolution` parameter.
-- `liquidGL` uses 3 levels of `z-index`, the `target` element will match the `z-index` value you set on the target element(s), the `shadow` property uses `z-index -1 ` and the `tilt` property uses `z-index +1`, make sure you leave enough room for all 3 layers to prevent stacking issues.
+- The `shadow` and `tilt` effects create new stacking layers behind the `target` element. The `shadow` is placed at `z-index - 2` and the `tilt` helper canvas is placed at `z-index - 1`. Ensure your `z-index` values leave room for these layers to prevent clipping or overflow issues.
 - As with all WebGL effects, any **image** content inside the `target` element must have permissive `Access-Control-Allow-Origin` headers set to prevent CORS issues.
 
 ---
