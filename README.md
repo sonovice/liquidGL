@@ -226,7 +226,7 @@ Below are some ready-made configurations you can copy-paste. Feel free to tweak 
 
 The `liquidGL` library is compatible with all WebGL enabled browsers on desktop, tablet and mobile devices.
 
-> ![NOTE]
+> [!NOTE]  
 > We are still testing non-Chromium browsers, and are aware of some performance issues in Safari specifically, these will be fixed, in the meantime please use with care.
 
 | Browser        | Supported |
