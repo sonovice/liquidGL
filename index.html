@@ -857,6 +857,7 @@
                 /* OPTIONAL - GSAP ANIMATION OF TARGET ELEMENT */
                 /* You can animate the target element to create a more dynamic effect,
                 or use the on.init callback to run any code after liquidGL is initialised. */
+                /* Preloader Animation */
                 loadingTl.then(() => {
                   gsap.to(preloader, {
                     yPercent: -100,
@@ -866,7 +867,7 @@
                       preloader.style.display = "none";
                     },
                   });
-                  /* Target Animation*/
+                  /* Target Animation */
                   gsap.to(intro.el, {
                     scaleX: 1,
                     duration: 1.2,
@@ -881,7 +882,7 @@
           /* 3. REQUIRED FOR DYNAMIC ELEMENTS - REGISTER DYNAMIC ELEMENTS */
           /* You need to register any elements that intersect the target which
           you want to be refracted. For example animated content, text, etc. 
-          You do not need to register videos, they are automatically registered.*/
+          You do not need to register videos, they are automatically registered. */
           liquidGL.registerDynamic(allSplitLines);
           liquidGL.registerDynamic(".banner-text-container");
 
@@ -940,14 +941,12 @@
     <script>
       /* DEMO ONLY - VIDEO PLAYER, NOT REQUIRED FOR LIBRARY USAGE */
       document.addEventListener("DOMContentLoaded", () => {
-        // Select elements without modifying existing HTML
         const videoTrigger = document.querySelector(".video-hover-area");
         const playIcon = document.querySelector(".play-icon");
         const fullscreenPlayer = document.querySelector(".fullscreen-player");
         const fullscreenVideo = fullscreenPlayer.querySelector("video");
         const closeBtn = document.querySelector(".close-btn");
 
-        // New custom controls elements
         const customControls = document.querySelector(".custom-controls");
         const playPauseBtn = document.querySelector(".play-pause-btn");
         const progressBarContainer = document.querySelector(
@@ -957,10 +956,8 @@
 
         if (!videoTrigger) return;
 
-        // Style the trigger to indicate it's clickable
         videoTrigger.style.cursor = "pointer";
 
-        // --- GSAP Animations and Initial States ---
         gsap.set(playIcon, {
           scale: 0,
           autoAlpha: 0,
@@ -973,7 +970,6 @@
           visibility: "hidden",
         });
 
-        // --- Player Logic ---
         let inactivityTimer;
 
         const hideControls = () => {
@@ -985,13 +981,12 @@
         const resetInactivityTimer = () => {
           fullscreenPlayer.classList.remove("inactive");
           clearTimeout(inactivityTimer);
-          inactivityTimer = setTimeout(hideControls, 3000); // Hide after 3 seconds
+          inactivityTimer = setTimeout(hideControls, 3000);
         };
 
         fullscreenPlayer.addEventListener("mousemove", resetInactivityTimer);
         fullscreenPlayer.addEventListener("touchstart", resetInactivityTimer);
 
-        // Play/Pause
         const togglePlayPause = () => {
           if (fullscreenVideo.paused) {
             fullscreenVideo.play();
@@ -1002,21 +997,18 @@
             fullscreenVideo.pause();
             playPauseBtn.classList.remove("playing");
             playPauseBtn.setAttribute("aria-label", "Play video");
-            clearTimeout(inactivityTimer); // Keep controls visible when paused
+            clearTimeout(inactivityTimer);
           }
         };
 
         playPauseBtn.addEventListener("click", togglePlayPause);
         fullscreenVideo.addEventListener("click", (e) => {
-          // Prevent video click from propagating to elements behind it
           e.stopPropagation();
-          // only toggle play if the click is on the video itself, not the controls
           if (e.target === fullscreenVideo) {
             togglePlayPause();
           }
         });
 
-        // Progress bar
         fullscreenVideo.addEventListener("timeupdate", () => {
           const progress =
             (fullscreenVideo.currentTime / fullscreenVideo.duration) * 100;
@@ -1027,7 +1019,6 @@
           });
         });
 
-        // Seek
         progressBarContainer.addEventListener("click", (e) => {
           const rect = progressBarContainer.getBoundingClientRect();
           const clickX = e.clientX - rect.left;
@@ -1036,7 +1027,6 @@
           fullscreenVideo.currentTime = newTime;
         });
 
-        // Reset UI when video ends
         fullscreenVideo.addEventListener("ended", () => {
           playPauseBtn.classList.remove("playing");
           playPauseBtn.setAttribute("aria-label", "Play video");
@@ -1044,9 +1034,6 @@
           clearTimeout(inactivityTimer);
         });
 
-        // --- Event Listeners ---
-
-        // Play icon to follow cursor over the video trigger area
         videoTrigger.addEventListener("mouseenter", (e) => {
           gsap.set(playIcon, { x: e.clientX, y: e.clientY });
           gsap.to(playIcon, { autoAlpha: 1, scale: 1, duration: 0.3 });
@@ -1065,7 +1052,6 @@
           });
         });
 
-        // Click trigger to open fullscreen video player
         videoTrigger.addEventListener("click", () => {
           gsap.to(fullscreenPlayer, {
             xPercent: 0,
@@ -1081,7 +1067,6 @@
           });
         });
 
-        // --- Close logic ---
         const closePlayer = () => {
           gsap.to(fullscreenVideo, {
             volume: 0,
