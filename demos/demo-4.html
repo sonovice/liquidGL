@@ -165,6 +165,15 @@
           gap: 1.5rem;
         }
       }
+
+      .lil-gui {
+        --focus-color: #f5f5f5;
+        --number-color: #f5f5f5;
+      }
+
+      .lil-gui.autoPlace {
+        z-index: 10000;
+      }
     </style>
   </head>
   <body>
@@ -258,55 +267,52 @@
 
           const updateAll = (key, value) => {
             lensList.forEach((ln) => {
+              if (!ln) return;
               ln.options[key] = value;
-              if (key === "shadow") {
-                ln.setShadow(value);
-              }
-              if (key === "tilt") {
-                ln.setTilt(value);
-              }
+              if (key === "shadow") ln.setShadow(value);
+              if (key === "tilt") ln.setTilt(value);
             });
           };
 
           glassFolder
             .add(firstLens.options, "refraction", 0, 0.1, 0.001)
-            .name("Refraction")
-            .onChange((value) => updateAll("refraction", value));
+            .onChange((v) => updateAll("refraction", v));
 
           glassFolder
             .add(firstLens.options, "bevelDepth", 0, 0.2, 0.001)
-            .name("Bevel Depth")
-            .onChange((value) => updateAll("bevelDepth", value));
+            .onChange((v) => updateAll("bevelDepth", v));
 
           glassFolder
             .add(firstLens.options, "bevelWidth", 0, 0.5, 0.001)
-            .name("Bevel Width")
-            .onChange((value) => updateAll("bevelWidth", value));
+            .onChange((v) => updateAll("bevelWidth", v));
 
           glassFolder
             .add(firstLens.options, "frost", 0, 10, 0.1)
-            .name("Frost")
-            .onChange((value) => updateAll("frost", value));
+            .onChange((v) => updateAll("frost", v));
 
           glassFolder
-            .add(firstLens.options, "specular")
-            .name("Specular")
-            .onChange((value) => updateAll("specular", value));
+            .add(firstLens.options, "magnify", 1, 5, 0.1)
+            .onChange((v) => updateAll("magnify", v));
 
           glassFolder
             .add(firstLens.options, "shadow")
-            .name("Enable Shadow")
-            .onChange((value) => updateAll("shadow", value));
+            .onChange((v) => updateAll("shadow", v));
+
+          glassFolder
+            .add(firstLens.options, "specular")
+            .onChange((v) => updateAll("specular", v));
 
           glassFolder
             .add(firstLens.options, "tilt")
-            .name("Tilt")
-            .onChange((value) => updateAll("tilt", value));
+            .onChange((v) => updateAll("tilt", v));
 
           glassFolder
             .add(firstLens.options, "tiltFactor", 0, 25, 0.1)
-            .name("Tilt Factor")
-            .onChange((value) => updateAll("tiltFactor", value));
+            .onChange((v) => updateAll("tiltFactor", v));
+
+          glassFolder
+            .add(firstLens.options, "reveal", ["none", "fade"])
+            .onChange((v) => updateAll("reveal", v));
 
           glassFolder.close();
         }

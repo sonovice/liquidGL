@@ -73,6 +73,15 @@
         pointer-events: none;
         line-height: 0.85;
       }
+
+      .lil-gui {
+        --focus-color: #f5f5f5;
+        --number-color: #f5f5f5;
+      }
+
+      .lil-gui.autoPlace {
+        z-index: 10000;
+      }
     </style>
   </head>
   <body>
@@ -127,33 +136,50 @@
         const lensArr = Array.isArray(glassEffect)
           ? glassEffect
           : [glassEffect];
-        const gui = new lil.GUI();
-        const folder = gui.addFolder("liquidGL Effect");
         const first = lensArr[0];
-        const sync = (k, v) => lensArr.forEach((ln) => (ln.options[k] = v));
-        folder
-          .add(first.options, "refraction", 0, 0.1, 0.001)
-          .onChange((v) => sync("refraction", v));
-        folder
-          .add(first.options, "bevelDepth", 0, 0.2, 0.001)
-          .onChange((v) => sync("bevelDepth", v));
-        folder
-          .add(first.options, "bevelWidth", 0, 0.5, 0.001)
-          .onChange((v) => sync("bevelWidth", v));
-        folder
-          .add(first.options, "frost", 0, 10, 0.1)
-          .onChange((v) => sync("frost", v));
-        folder
-          .add(first.options, "specular")
-          .onChange((v) => sync("specular", v));
-        folder
-          .add(first.options, "shadow")
-          .name("Shadow")
-          .onChange((v) => {
-            lensArr.forEach((ln) => ln.setShadow(v));
-          });
-        folder.add(first.options, "reveal", ["none", "fade"]).name("Reveal");
-        folder.close();
+        if (first) {
+          const gui = new lil.GUI();
+          const folder = gui.addFolder("liquidGL Effect");
+
+          const sync = (k, v) => {
+            lensArr.forEach((ln) => {
+              if (!ln) return;
+              ln.options[k] = v;
+              if (k === "shadow") ln.setShadow(v);
+              if (k === "tilt") ln.setTilt(v);
+            });
+          };
+
+          folder
+            .add(first.options, "refraction", 0, 0.1, 0.001)
+            .onChange((v) => sync("refraction", v));
+          folder
+            .add(first.options, "bevelDepth", 0, 0.2, 0.001)
+            .onChange((v) => sync("bevelDepth", v));
+          folder
+            .add(first.options, "bevelWidth", 0, 0.5, 0.001)
+            .onChange((v) => sync("bevelWidth", v));
+          folder
+            .add(first.options, "frost", 0, 10, 0.1)
+            .onChange((v) => sync("frost", v));
+          folder
+            .add(first.options, "magnify", 1, 5, 0.1)
+            .onChange((v) => sync("magnify", v));
+          folder
+            .add(first.options, "shadow")
+            .onChange((v) => sync("shadow", v));
+          folder
+            .add(first.options, "specular")
+            .onChange((v) => sync("specular", v));
+          folder.add(first.options, "tilt").onChange((v) => sync("tilt", v));
+          folder
+            .add(first.options, "tiltFactor", 0, 25, 0.1)
+            .onChange((v) => sync("tiltFactor", v));
+          folder
+            .add(first.options, "reveal", ["none", "fade"])
+            .onChange((v) => sync("reveal", v));
+          folder.close();
+        }
 
         /* 3. Lenis + GSAP ticker sync (same pattern as other demos) */
         window.addEventListener("load", () => {
