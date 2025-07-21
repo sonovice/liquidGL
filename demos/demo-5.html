@@ -160,6 +160,23 @@
         z-index: 9999;
       }
 
+      @media screen and (max-width: 768px) {
+        .shape {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: calc(80vw);
+          height: calc(50vh);
+          border-radius: 2vw;
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(20px) saturate(180%);
+          will-change: transform;
+          pointer-events: auto;
+          z-index: 9999;
+        }
+      }
+
       .banner-text-container {
         position: absolute;
         inset: 0;

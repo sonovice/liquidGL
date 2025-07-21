@@ -337,16 +337,6 @@
         mix-blend-mode: difference;
       }
 
-      .ripples {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        filter: invert(1);
-        opacity: 0.3;
-      }
-
       /* --- Login Form Styles --- */
       .login-card {
         width: auto;
@@ -535,7 +525,6 @@
         </div>
       </div>
     </nav>
-    <div class="ripples"></div>
     <div class="split-layout">
       <div id="left-col" class="left-column">
         <div class="main-content">
@@ -584,11 +573,7 @@
             <div class="menu-wrap credit-card-glass">
               <div class="card-top">
                 <img src="/assets/card-chip.svg" alt="Chip" class="card-chip" />
-                <img
-                  src="https://logo.clearbit.com/visa.com"
-                  alt="Visa"
-                  class="card-brand"
-                />
+                <img src="/assets/visa.png" alt="Visa" class="card-brand" />
               </div>
               <div class="card-number">**** **** **** 5482</div>
               <div class="card-footer">
@@ -609,7 +594,7 @@
         <!-- Login Form -->
         <div class="login-card">
           <img
-            src="https://cdn.prod.website-files.com/683cfe5728992d2318dfecd3/6843df24213921eaac90bcda_67a3d1a10eb7305c70724387_logo.svg"
+            src="/assets/ndlogo.svg"
             loading="lazy"
             alt="NaughtyDuk©"
             class="form-logo"
@@ -657,8 +642,6 @@
     <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jquery.ripples@0.6.3/dist/jquery.ripples.min.js"></script>
-
     <!-- Scripts -->
     <script src="/scripts/html2canvas.min.js"></script>
     <script src="/scripts/liquidGL.js"></script>
@@ -698,17 +681,6 @@
         }
 
         initializeliquidGL(); // Call immediately on DOM ready
-
-        // Ripples
-        $(".ripples").each(function () {
-          const $this = $(this);
-          $this.ripples({
-            resolution: 512,
-            dropRadius: 20,
-            perturbance: 0.04,
-            interactive: true,
-          });
-        });
 
         // A function to initialize the glass effect and its controls
         function initializeliquidGL() {

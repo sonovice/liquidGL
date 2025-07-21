@@ -441,13 +441,21 @@
           const fullW = this.snapshotTarget.scrollWidth;
           const fullH = this.snapshotTarget.scrollHeight;
           const maxTex = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) || 8192;
+          const MAX_MOBILE_DIM = 4096;
+          const isMobileSafari = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
           let scale = Math.min(
             this._snapshotResolution,
             maxTex / fullW,
             maxTex / fullH
           );
-          scale = Math.max(0.1, scale);
-          this.scaleFactor = scale;
+
+          if (isMobileSafari) {
+            // keep both dimensions ≤ 4096px whatever happens
+            const over = (Math.max(fullW, fullH) * scale) / MAX_MOBILE_DIM;
+            if (over > 1) scale = scale / over;
+          }
+          this.scaleFactor = Math.max(0.1, scale);
 
           this.canvas.style.visibility = "hidden";
           undos.push(() => (this.canvas.style.visibility = "visible"));
