@@ -187,6 +187,12 @@
         padding: 5px;
       }
 
+      @media screen and (max-width: 768px) {
+        .marquee-card {
+          height: 150px;
+        }
+      }
+
       .plan-name {
         font-size: 1.35rem;
         font-weight: 700;
@@ -306,7 +312,7 @@
           <a href="demo-1.html" class="nav-item">D1 - Nav Bar</a>
           <a href="demo-2.html" class="nav-item">D2 - Bank Card</a>
           <a href="demo-3.html" class="nav-item">D3 - Animate</a>
-          <a href="demo-4.html" class="nav-item active">D4 - Tilt Cards</a>
+          <a href="demo-4.html" class="nav-item active">D4 - Cards</a>
           <a href="demo-5.html" class="nav-item">D5 - Reveal</a>
         </div>
       </div>
@@ -415,8 +421,8 @@
           frost: 2,
           shadow: true,
           specular: true,
-          tilt: true,
-          tiltFactor: 10,
+          tilt: false,
+          tiltFactor: 5,
           reveal: "fade",
         });
 
