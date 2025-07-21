@@ -670,11 +670,26 @@
       if (!rect) return;
 
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      const x = rect.left * dpr;
-      const y = this.canvas.height - (rect.top + rect.height) * dpr;
+
+      // Detect overscroll offset to adjust WebGL viewport
+      let overscrollY = 0;
+      let overscrollX = 0;
+
+      if (window.visualViewport) {
+        // Visual viewport gives us the offset during overscroll
+        overscrollX = window.visualViewport.offsetLeft;
+        overscrollY = window.visualViewport.offsetTop;
+      }
+
+      // Apply overscroll offset to viewport position
+      const x = (rect.left + overscrollX) * dpr;
+      const y =
+        this.canvas.height - (rect.top + overscrollY + rect.height) * dpr;
       const w = rect.width * dpr;
       const h = rect.height * dpr;
-      if (w <= 0 || h <= 0) return;
+
+      // Don't return early - allow rendering even during overscroll
+      // when viewport might be partially outside canvas bounds
 
       gl.viewport(x, y, w, h);
       gl.uniform2f(this.u.res, w, h);
@@ -1435,6 +1450,7 @@
         this._mirrorActive && this._baseRect
           ? this._baseRect
           : this.el.getBoundingClientRect();
+
       this.rectPx = {
         left: rect.left,
         top: rect.top,
@@ -1460,6 +1476,80 @@
 
       if (this._shadowSyncFn) {
         this._shadowSyncFn();
+      }
+    }
+
+    /* ----------------------------- */
+    _handleOverscrollCompensation() {
+      let overscrollY = 0;
+      let overscrollX = 0;
+
+      // Try visual viewport API first (more reliable on iOS)
+      if (window.visualViewport) {
+        // During overscroll, the visual viewport offset changes
+        overscrollX = -window.visualViewport.offsetLeft;
+        overscrollY = -window.visualViewport.offsetTop;
+      } else {
+        // Fallback: check body/html transforms
+        const bodyStyle = window.getComputedStyle(document.body);
+        const htmlStyle = window.getComputedStyle(document.documentElement);
+
+        // Check body transform
+        if (bodyStyle.transform && bodyStyle.transform !== "none") {
+          const matrix = new DOMMatrix(bodyStyle.transform);
+          overscrollX = matrix.m41; // translateX
+          overscrollY = matrix.m42; // translateY
+        }
+
+        // Check html transform as fallback
+        if (
+          overscrollY === 0 &&
+          overscrollX === 0 &&
+          htmlStyle.transform &&
+          htmlStyle.transform !== "none"
+        ) {
+          const matrix = new DOMMatrix(htmlStyle.transform);
+          overscrollX = matrix.m41;
+          overscrollY = matrix.m42;
+        }
+      }
+
+      // Store current overscroll state
+      this._currentOverscrollX = overscrollX;
+      this._currentOverscrollY = overscrollY;
+
+      // Apply compensation transform to keep element aligned with WebGL
+      if (overscrollY !== 0 || overscrollX !== 0) {
+        // Counter the overscroll movement
+        const compensationTransform = `translate(${-overscrollX}px, ${-overscrollY}px)`;
+
+        // Get current transform and strip any existing translate
+        let currentTransform = this.el.style.transform;
+        currentTransform = currentTransform
+          .replace(/translate\([^)]*\)\s*/g, "")
+          .trim();
+
+        // Apply compensation with existing transforms
+        this.el.style.transform =
+          compensationTransform +
+          (currentTransform ? " " + currentTransform : "");
+
+        // Apply same compensation to shadow
+        if (this._shadowEl) {
+          let shadowTransform = this._shadowEl.style.transform || "";
+          shadowTransform = shadowTransform
+            .replace(/translate\([^)]*\)\s*/g, "")
+            .trim();
+          this._shadowEl.style.transform =
+            compensationTransform +
+            (shadowTransform ? " " + shadowTransform : "");
+        }
+      } else if (!this._tiltInteracting) {
+        // No overscroll and not tilting, restore normal transform
+        this.el.style.transform = this._savedTransform || "";
+        if (this._shadowEl) {
+          this._shadowEl.style.transform = "";
+        }
       }
     }
 
@@ -1575,7 +1665,17 @@
       if (this._tiltHandlersBound) return;
 
       if (this._savedTransform === undefined) {
-        this._savedTransform = this.el.style.transform;
+        // Strip any overscroll compensation from current transform before saving
+        const currentTransform = this.el.style.transform;
+        if (currentTransform && currentTransform.includes("translate")) {
+          // Remove translate() from the transform
+          this._savedTransform = currentTransform
+            .replace(/translate\([^)]*\)\s*/g, "")
+            .trim();
+          if (this._savedTransform === "") this._savedTransform = "none";
+        } else {
+          this._savedTransform = currentTransform;
+        }
       }
       if (this._savedTransformStyle === undefined) {
         this._savedTransformStyle = this.el.style.transformStyle;
@@ -1616,7 +1716,20 @@
           this._savedTransform && this._savedTransform !== "none"
             ? this._savedTransform + " "
             : "";
-        const transformStr = `${baseTransform}perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+
+        // Get current overscroll compensation
+        let overscrollCompensation = "";
+        const bodyStyle = window.getComputedStyle(document.body);
+        if (bodyStyle.transform && bodyStyle.transform !== "none") {
+          const matrix = new DOMMatrix(bodyStyle.transform);
+          const overscrollX = matrix.m41;
+          const overscrollY = matrix.m42;
+          if (overscrollX !== 0 || overscrollY !== 0) {
+            overscrollCompensation = `translate(${-overscrollX}px, ${-overscrollY}px) `;
+          }
+        }
+
+        const transformStr = `${overscrollCompensation}${baseTransform}perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
 
         this.tiltX = rotX;
         this.tiltY = rotY;
@@ -1644,7 +1757,20 @@
           this._savedTransform && this._savedTransform !== "none"
             ? this._savedTransform + " "
             : "";
-        this.el.style.transform = `${baseRest}perspective(800px) rotateX(0deg) rotateY(0deg)`;
+
+        // Get current overscroll compensation
+        let overscrollCompensation = "";
+        const bodyStyle = window.getComputedStyle(document.body);
+        if (bodyStyle.transform && bodyStyle.transform !== "none") {
+          const matrix = new DOMMatrix(bodyStyle.transform);
+          const overscrollX = matrix.m41;
+          const overscrollY = matrix.m42;
+          if (overscrollX !== 0 || overscrollY !== 0) {
+            overscrollCompensation = `translate(${-overscrollX}px, ${-overscrollY}px) `;
+          }
+        }
+
+        this.el.style.transform = `${overscrollCompensation}${baseRest}perspective(800px) rotateX(0deg) rotateY(0deg)`;
 
         this.tiltX = 0;
         this.tiltY = 0;
