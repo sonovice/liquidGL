@@ -540,6 +540,18 @@
           if (morphEl) {
             gsap.set(morphEl, { transformOrigin: "50% 50%" });
 
+            // Check if screen is mobile size (767px or narrower)
+            const isMobile = window.innerWidth <= 767;
+            const sizeMultiplier = isMobile ? 2 : 1; // 2x size on mobile
+
+            if (isMobile) {
+              // Set initial larger size on mobile
+              gsap.set(morphEl, {
+                width: 15 * sizeMultiplier + "vw",
+                height: 15 * sizeMultiplier + "vw",
+              });
+            }
+
             const tl = gsap.timeline({
               scrollTrigger: {
                 trigger: ".main-content",
@@ -549,20 +561,19 @@
               },
             });
 
+            // Animation timeline identical to desktop but with size multiplier
             tl.to(morphEl, { borderRadius: "50%", duration: 1, ease: "none" })
-              // Morph to tall rounded rectangle over extended duration
               .to(morphEl, {
-                width: "12vw",
-                height: "20vw",
-                borderRadius: "1vw",
+                width: 12 * sizeMultiplier + "vw",
+                height: 20 * sizeMultiplier + "vw",
+                borderRadius: 1 * sizeMultiplier + "vw",
                 duration: 3,
                 ease: "none",
               })
-              // Last morph to pill shape
               .to(morphEl, {
-                width: "25vw",
-                height: "8vw",
-                borderRadius: "4vw",
+                width: 25 * sizeMultiplier + "vw",
+                height: 8 * sizeMultiplier + "vw",
+                borderRadius: 4 * sizeMultiplier + "vw",
                 duration: 2,
                 ease: "none",
               });
