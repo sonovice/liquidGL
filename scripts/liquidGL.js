@@ -195,12 +195,10 @@
             const off = new OffscreenCanvas(width, height);
             const ctx = off.getContext('2d');
 
-            // Re-composite the clean snapshot plus the updated element frame
             ctx.drawImage(snap, 0, 0, width, height);
             ctx.drawImage(dyn, 0, 0, width, height);
 
             const bmp = await off.transferToImageBitmap();
-            /* Transfer the bitmap back – zero copy */
             self.postMessage({ id, bmp }, [bmp]);
           };
         `;
@@ -249,7 +247,7 @@
         uniform sampler2D u_tex;
         uniform vec2  u_resolution;
         uniform vec2  u_textureResolution;
-        uniform vec4  u_bounds;    // xy = origin, zw = scale in UV
+        uniform vec4  u_bounds;
         uniform float u_refraction;
         uniform float u_bevelDepth;
         uniform float u_bevelWidth;
@@ -267,7 +265,6 @@
           return length(max(abs(p)-b+r,0.0))-r;
         }
 
-        // Pseudo-random function to break up sampling patterns
         float random(vec2 st) {
           return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
         }
@@ -289,8 +286,7 @@
           float centreBlend = smoothstep(0.15, 0.45, length(p));
           vec2 offset = normalize(p) * offsetAmt * centreBlend;
 
-          // New tilt logic
-          float tiltRefractionScale = 0.05; // Adjustable factor
+          float tiltRefractionScale = 0.05;
           vec2 tiltOffset = vec2(tan(radians(u_tiltY)), -tan(radians(u_tiltX))) * tiltRefractionScale;
 
           vec2 localUV = (v_uv - 0.5) / u_magnify + 0.5;
@@ -304,27 +300,22 @@
 
           vec4 baseCol   = texture2D(u_tex, mapped);
 
-          // Smoothed refraction & frost
           vec2 texel = 1.0 / u_textureResolution;
           vec4 refrCol;
 
           if (u_frost > 0.0) {
-              // High-quality, non-linear blur for a smooth "frost" effect
               float radius = u_frost * 4.0;
               vec4 sum = vec4(0.0);
-              const int SAMPLES = 16; // Keep sample count reasonable for performance
+              const int SAMPLES = 16;
 
               for (int i = 0; i < SAMPLES; i++) {
-                  // Use a pseudo-random angle and distance to sample in a disk pattern
-                  // This breaks up the geometric artifacts of grid-based blurs.
-                  float angle = random(v_uv + float(i)) * 6.283185; // 2 * PI
+                  float angle = random(v_uv + float(i)) * 6.283185;
                   float dist = sqrt(random(v_uv - float(i))) * radius;
                   vec2 offset = vec2(cos(angle), sin(angle)) * texel * dist;
                   sum += texture2D(u_tex, sampleUV + offset);
               }
               refrCol = sum / float(SAMPLES);
           } else {
-              // Default: 5-point multisampling to reduce aliasing from texture stretching.
               refrCol = texture2D(u_tex, sampleUV);
               refrCol += texture2D(u_tex, sampleUV + vec2( texel.x, 0.0));
               refrCol += texture2D(u_tex, sampleUV + vec2(-texel.x, 0.0));
@@ -333,25 +324,20 @@
               refrCol /= 5.0;
           }
 
-          // If refracted sample is from a clipped video corner (alpha ~0), use base color instead.
           if (refrCol.a < 0.1) {
               refrCol = baseCol;
           }
 
-          // How different are they?  0 = identical, 1 = extreme difference
           float diff = clamp(length(refrCol.rgb - baseCol.rgb) * 4.0, 0.0, 1.0);
 
-          // Blend factor grows only when colours diverge AND we're near the centre
-          //    ( we gate it with the same centreBlend already used for offset )
-          float antiHalo = (1.0 - centreBlend) * diff;    // 0–15 % radius = 0, fades in by 45 %
+          float antiHalo = (1.0 - centreBlend) * diff;
 
-          vec4 final    = refrCol; // mix(refrCol, baseCol, antiHalo);
+          vec4 final    = refrCol;
 
-          // Mask pixels outside rounded rect when using global canvas
           vec2 p_px = (v_uv - 0.5) * u_resolution;
           vec2 b_px = 0.5 * u_resolution;
           float dmask = udRoundBox(p_px, b_px, u_radius);
-          float inShape = 1.0 - step(0.0, dmask); // 1 inside, 0 outside
+          float inShape = 1.0 - step(0.0, dmask);
 
           if (u_specular) {
             vec2 lp1 = vec2(sin(u_time*0.2), cos(u_time*0.3))*0.6 + 0.5;
@@ -362,13 +348,11 @@
             final.rgb += h;
           }
 
-          // Apply reveal fade if requested (same logic as single-lens build)
-          if (u_revealType == 1) { // fade
+          if (u_revealType == 1) {
               final.rgb *= u_revealProgress;
               final.a  *= u_revealProgress;
           }
 
-          // Apply rounded-rect mask
           final.rgb *= inShape;
           final.a   *= inShape;
 
@@ -431,7 +415,6 @@
 
       const undos = [];
 
-      // Retry mechanism for intermittent failures on mobile
       const attemptCapture = async (
         attempt = 1,
         maxAttempts = 3,
@@ -451,7 +434,6 @@
           );
 
           if (isMobileSafari) {
-            // keep both dimensions ≤ 4096px whatever happens
             const over = (Math.max(fullW, fullH) * scale) / MAX_MOBILE_DIM;
             if (over > 1) scale = scale / over;
           }
@@ -464,13 +446,11 @@
             .flatMap((lens) => [lens.el, lens._shadowEl])
             .filter(Boolean);
 
-          // Enhanced logic to ignore problematic elements, especially on mobile
           const ignoreElementsFunc = (element) => {
             if (!element || !element.hasAttribute) return false;
             if (element === this.canvas || lensElements.includes(element)) {
               return true;
             }
-            // Broadly ignore position: fixed elements to prevent html2canvas hangs on mobile
             const style = window.getComputedStyle(element);
             if (style.position === "fixed") {
               return true;
@@ -671,25 +651,19 @@
 
       const dpr = Math.min(2, window.devicePixelRatio || 1);
 
-      // Detect overscroll offset to adjust WebGL viewport
       let overscrollY = 0;
       let overscrollX = 0;
 
       if (window.visualViewport) {
-        // Visual viewport gives us the offset during overscroll
         overscrollX = window.visualViewport.offsetLeft;
         overscrollY = window.visualViewport.offsetTop;
       }
 
-      // Apply overscroll offset to viewport position
       const x = (rect.left + overscrollX) * dpr;
       const y =
         this.canvas.height - (rect.top + overscrollY + rect.height) * dpr;
       const w = rect.width * dpr;
       const h = rect.height * dpr;
-
-      // Don't return early - allow rendering even during overscroll
-      // when viewport might be partially outside canvas bounds
 
       gl.viewport(x, y, w, h);
       gl.uniform2f(this.u.res, w, h);
@@ -833,7 +807,6 @@
 
         if (drawW <= 0 || drawH <= 0) return;
 
-        // --- Clamp update rect to the snapshot texture so wide marquees are not skipped ---
         const maxW = this.textureWidth;
         const maxH = this.textureHeight;
         let dstX = drawX;
@@ -843,10 +816,9 @@
           updW = drawW,
           updH = drawH;
 
-        // Left / top overflow
         if (dstX < 0) {
           srcX = -dstX;
-          updW += dstX; // dstX is negative
+          updW += dstX;
           dstX = 0;
         }
         if (dstY < 0) {
@@ -855,7 +827,6 @@
           dstY = 0;
         }
 
-        // Right / bottom overflow
         if (dstX + updW > maxW) {
           updW = maxW - dstX;
         }
@@ -1016,7 +987,6 @@
 
           if (drawW <= 0 || drawH <= 0) return;
 
-          // --- Clamp update rect to the snapshot texture so wide marquees are not skipped ---
           const maxW = this.textureWidth;
           const maxH = this.textureHeight;
           let dstX = drawX;
@@ -1026,10 +996,9 @@
             updW = drawW,
             updH = drawH;
 
-          // Left / top overflow
           if (dstX < 0) {
             srcX = -dstX;
-            updW += dstX; // dstX is negative
+            updW += dstX;
             dstX = 0;
           }
           if (dstY < 0) {
@@ -1038,7 +1007,6 @@
             dstY = 0;
           }
 
-          // Right / bottom overflow
           if (dstX + updW > maxW) {
             updW = maxW - dstX;
           }
@@ -1484,24 +1452,19 @@
       let overscrollY = 0;
       let overscrollX = 0;
 
-      // Try visual viewport API first (more reliable on iOS)
       if (window.visualViewport) {
-        // During overscroll, the visual viewport offset changes
         overscrollX = -window.visualViewport.offsetLeft;
         overscrollY = -window.visualViewport.offsetTop;
       } else {
-        // Fallback: check body/html transforms
         const bodyStyle = window.getComputedStyle(document.body);
         const htmlStyle = window.getComputedStyle(document.documentElement);
 
-        // Check body transform
         if (bodyStyle.transform && bodyStyle.transform !== "none") {
           const matrix = new DOMMatrix(bodyStyle.transform);
-          overscrollX = matrix.m41; // translateX
-          overscrollY = matrix.m42; // translateY
+          overscrollX = matrix.m41;
+          overscrollY = matrix.m42;
         }
 
-        // Check html transform as fallback
         if (
           overscrollY === 0 &&
           overscrollX === 0 &&
@@ -1514,27 +1477,21 @@
         }
       }
 
-      // Store current overscroll state
       this._currentOverscrollX = overscrollX;
       this._currentOverscrollY = overscrollY;
 
-      // Apply compensation transform to keep element aligned with WebGL
       if (overscrollY !== 0 || overscrollX !== 0) {
-        // Counter the overscroll movement
         const compensationTransform = `translate(${-overscrollX}px, ${-overscrollY}px)`;
 
-        // Get current transform and strip any existing translate
         let currentTransform = this.el.style.transform;
         currentTransform = currentTransform
           .replace(/translate\([^)]*\)\s*/g, "")
           .trim();
 
-        // Apply compensation with existing transforms
         this.el.style.transform =
           compensationTransform +
           (currentTransform ? " " + currentTransform : "");
 
-        // Apply same compensation to shadow
         if (this._shadowEl) {
           let shadowTransform = this._shadowEl.style.transform || "";
           shadowTransform = shadowTransform
@@ -1545,7 +1502,6 @@
             (shadowTransform ? " " + shadowTransform : "");
         }
       } else if (!this._tiltInteracting) {
-        // No overscroll and not tilting, restore normal transform
         this.el.style.transform = this._savedTransform || "";
         if (this._shadowEl) {
           this._shadowEl.style.transform = "";
@@ -1665,10 +1621,8 @@
       if (this._tiltHandlersBound) return;
 
       if (this._savedTransform === undefined) {
-        // Strip any overscroll compensation from current transform before saving
         const currentTransform = this.el.style.transform;
         if (currentTransform && currentTransform.includes("translate")) {
-          // Remove translate() from the transform
           this._savedTransform = currentTransform
             .replace(/translate\([^)]*\)\s*/g, "")
             .trim();
@@ -1717,7 +1671,6 @@
             ? this._savedTransform + " "
             : "";
 
-        // Get current overscroll compensation
         let overscrollCompensation = "";
         const bodyStyle = window.getComputedStyle(document.body);
         if (bodyStyle.transform && bodyStyle.transform !== "none") {
@@ -1758,7 +1711,6 @@
             ? this._savedTransform + " "
             : "";
 
-        // Get current overscroll compensation
         let overscrollCompensation = "";
         const bodyStyle = window.getComputedStyle(document.body);
         if (bodyStyle.transform && bodyStyle.transform !== "none") {
@@ -2074,7 +2026,6 @@
       return;
     }
 
-    // --- Dependency Detection ---
     const G = window.gsap;
     const L = window.Lenis;
     const LS = window.LocomotiveScroll;
@@ -2100,7 +2051,6 @@
       });
     }
 
-    // --- Bridge Setup ---
     if (useGSAP && ST) {
       if (loco) {
         loco.on("scroll", ST.update);
@@ -2127,7 +2077,6 @@
       }
     }
 
-    // --- Render Loop Integration ---
     if (renderer._rafId) {
       cancelAnimationFrame(renderer._rafId);
       renderer._rafId = null;
