@@ -55,6 +55,21 @@
         z-index: 9999;
       }
 
+      @media screen and (max-width: 768px) {
+        .shape {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: calc(100% - 2.5rem);
+          height: calc(65svh);
+          border-radius: 4vw;
+          will-change: transform;
+          pointer-events: auto;
+          z-index: 9999;
+        }
+      }
+
       .content-section {
         display: flex;
         align-items: center;
@@ -993,11 +1008,16 @@
           });
 
           /* 2. REQUIRED - INITIALISE LIQUIDGL */
+          /* Responsive refraction value */
+          const getRefractionValue = () => {
+            return window.innerWidth <= 767 ? 0.011 : 0.026;
+          };
+
           glassEffect = liquidGL({
             target: ".liquidGL",
             snapshot: "body",
             resolution: 2,
-            refraction: 0.026,
+            refraction: getRefractionValue(),
             bevelDepth: 0.119,
             bevelWidth: 0.057,
             frost: 0,
@@ -1032,6 +1052,14 @@
                 });
               },
             },
+          });
+
+          /* Handle responsive refraction on window resize */
+          window.addEventListener('resize', () => {
+            const newRefraction = getRefractionValue();
+            if (glassEffect && glassEffect.options) {
+              glassEffect.options.refraction = newRefraction;
+            }
           });
 
           /* 3. REQUIRED FOR DYNAMIC ELEMENTS - REGISTER DYNAMIC ELEMENTS */
