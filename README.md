@@ -215,6 +215,7 @@ Below are some ready-made configurations you can copy-paste. Feel free to tweak 
 ## Important Notes
 
 - For dynamic content to be refracted in real-time, you must register the element(s) with `liquidGL.registerDynamic()`. It is crucial to set the initial state of your animations **before** calling `liquidGL()` to ensure they are captured correctly.
+- The library ignores `fixed` position elements, this is to prevent a known bug between html2canvas and mobile browsers from surfacing which can prevent the snapshot from running. This is a safety net that shouldn't interfere with your use of the library.
 - You can have multiple instances on one page **but they must share the same `z-index` value**. If you specify different `z-index` values, `liquidGL` will use the highest `z-index` for all elements with the `target` selector. This is because the effect uses a shared canvas to prevent WebGL context issues, there is no work around to this unfortunately.
 - To improve performance on complex pages, you can snapshot a smaller, specific element like a background container instead of the whole page. Use the `snapshot` option with a CSS selector (e.g., `snapshot: '.my-background'`). This reduces texture memory and improves performance.
 - The initial capture is asynchronous. Call `liquidGL()` inside a `DOMContentLoaded` or `load` handler to ensure content is available to the snapshot.
