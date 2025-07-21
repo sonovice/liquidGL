@@ -431,56 +431,84 @@
 
       const undos = [];
 
-      try {
-        const fullW = this.snapshotTarget.scrollWidth;
-        const fullH = this.snapshotTarget.scrollHeight;
-        const maxTex = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) || 8192;
-        let scale = Math.min(
-          this._snapshotResolution,
-          maxTex / fullW,
-          maxTex / fullH
-        );
-        scale = Math.max(0.1, scale);
-        this.scaleFactor = scale;
+      // Retry mechanism for intermittent failures on mobile
+      const attemptCapture = async (
+        attempt = 1,
+        maxAttempts = 3,
+        delayMs = 500
+      ) => {
+        try {
+          const fullW = this.snapshotTarget.scrollWidth;
+          const fullH = this.snapshotTarget.scrollHeight;
+          const maxTex = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) || 8192;
+          let scale = Math.min(
+            this._snapshotResolution,
+            maxTex / fullW,
+            maxTex / fullH
+          );
+          scale = Math.max(0.1, scale);
+          this.scaleFactor = scale;
 
-        this.canvas.style.visibility = "hidden";
-        undos.push(() => (this.canvas.style.visibility = "visible"));
+          this.canvas.style.visibility = "hidden";
+          undos.push(() => (this.canvas.style.visibility = "visible"));
 
-        const lensElements = this.lenses
-          .flatMap((lens) => [lens.el, lens._shadowEl])
-          .filter(Boolean);
+          const lensElements = this.lenses
+            .flatMap((lens) => [lens.el, lens._shadowEl])
+            .filter(Boolean);
 
-        const snapCanvas = await html2canvas(this.snapshotTarget, {
-          allowTaint: false,
-          useCORS: true,
-          backgroundColor: null,
-          removeContainer: true,
-          width: fullW,
-          height: fullH,
-          scrollX: 0,
-          scrollY: 0,
-          scale: scale,
-          ignoreElements: (element) => {
+          // Enhanced logic to ignore problematic elements, especially on mobile
+          const ignoreElementsFunc = (element) => {
             if (!element || !element.hasAttribute) return false;
             if (element === this.canvas || lensElements.includes(element)) {
+              return true;
+            }
+            // Broadly ignore position: fixed elements to prevent html2canvas hangs on mobile
+            const style = window.getComputedStyle(element);
+            if (style.position === "fixed") {
               return true;
             }
             return (
               element.hasAttribute("data-liquid-ignore") ||
               element.closest("[data-liquid-ignore]")
             );
-          },
-        });
+          };
 
-        this._uploadTexture(snapCanvas);
-      } catch (e) {
-        console.error("liquidGL snapshot failed", e);
-      } finally {
-        for (let i = undos.length - 1; i >= 0; i--) {
-          undos[i]();
+          const snapCanvas = await html2canvas(this.snapshotTarget, {
+            allowTaint: false,
+            useCORS: true,
+            backgroundColor: null,
+            removeContainer: true,
+            width: fullW,
+            height: fullH,
+            scrollX: 0,
+            scrollY: 0,
+            scale: scale,
+            ignoreElements: ignoreElementsFunc,
+          });
+
+          this._uploadTexture(snapCanvas);
+          return true;
+        } catch (e) {
+          console.error("liquidGL snapshot failed on attempt " + attempt, e);
+          if (attempt < maxAttempts) {
+            console.log(
+              `Retrying snapshot capture (${attempt + 1}/${maxAttempts})...`
+            );
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+            return await attemptCapture(attempt + 1, maxAttempts, delayMs);
+          } else {
+            console.error("liquidGL: All snapshot attempts failed.", e);
+            return false;
+          }
+        } finally {
+          for (let i = undos.length - 1; i >= 0; i--) {
+            undos[i]();
+          }
+          this._capturing = false;
         }
-        this._capturing = false;
-      }
+      };
+
+      return await attemptCapture();
     }
 
     /* ----------------------------- */
