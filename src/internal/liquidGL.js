@@ -1,6 +1,12 @@
 /*
- * liquidGL – Ultra-light glassmorphism for the web
+ * liquidGL – Ultra-light glassmorphism for the web (ESM bundle internal)
  * -----------------------------------------------------------------------------
+ *
+ * This file is a direct migration of the original UMD/IIFE source into an
+ * ESM-friendly location. It still attaches its public API to `window.liquidGL`
+ * for runtime usage in the browser. The ESM wrapper at `src/index.js` imports
+ * this file for its side-effect (to register the API) and then re-exports a
+ * module-friendly API surface for consumers.
  *
  * Author: NaughtyDuk© – https://liquidgl.naughtyduk.com
  * Licence: MIT
@@ -2102,3 +2108,4 @@
     return { lenis, locomotiveScroll: loco };
   };
 })();
+
