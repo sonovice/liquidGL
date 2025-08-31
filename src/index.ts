@@ -13,7 +13,10 @@ if (typeof window !== "undefined") {
 }
 
 // Side-effect import: defines window.liquidGL and helpers
-import "./internal/liquidGL.js";
+import { installOnWindow } from "./internal/api";
+if (typeof window !== "undefined") {
+  installOnWindow();
+}
 
 // Minimal type surface for options; kept aligned with runtime defaults
 export type LiquidGLOptions = {
