@@ -8,12 +8,15 @@ import html2canvas from "html2canvas";
 // Attach html2canvas to window so the internal implementation can use it
 // The library is browser-only; these guards avoid issues if bundled for SSR by mistake
 if (typeof window !== "undefined") {
-  // @ts-ignore
+  // @ts-ignore: Expose html2canvas on window for internal runtime usage
   (window as any).html2canvas = html2canvas;
 }
 
 // Side-effect import: defines window.liquidGL and helpers
-import "./internal/liquidGL.js";
+import { installOnWindow } from "./internal/api.ts";
+if (typeof window !== "undefined") {
+  installOnWindow();
+}
 
 // Minimal type surface for options; kept aligned with runtime defaults
 export type LiquidGLOptions = {
@@ -35,17 +38,17 @@ export type LiquidGLOptions = {
 
 // ESM-friendly API wrappers that delegate to the global implementation
 export function liquidGL(options: LiquidGLOptions = {}) {
-  // @ts-ignore
+  // @ts-ignore: Call global attached API (installed at module import)
   return (window as any).liquidGL(options);
 }
 
 liquidGL.registerDynamic = function registerDynamic(elements: string | Element | NodeList | Element[]) {
-  // @ts-ignore
+  // @ts-ignore: Forward to global helper
   return (window as any).liquidGL.registerDynamic(elements);
 };
 
 liquidGL.syncWith = function syncWith(config: any = {}) {
-  // @ts-ignore
+  // @ts-ignore: Forward to global helper
   return (window as any).liquidGL.syncWith(config);
 };
 

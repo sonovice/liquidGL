@@ -1,0 +1,25 @@
+{
+  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "files": {
+    "ignore": ["dist/**", "node_modules/**"]
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "all": true,
+      "complexity": { "noExcessiveCognitiveComplexity": "off" },
+      "style": {
+        "useBlockStatements": "off",
+        "useConst": "error",
+        "noDefaultExport": "off",
+        "useNamingConvention": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "off"
+      }
+    }
+  },
+  "formatter": { "enabled": false },
+  "overrides": []
+}
+
