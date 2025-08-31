@@ -10,11 +10,12 @@ export function registerDynamicElement(renderer: any, elements: any) {
   };
 
   if (typeof elements === "string") {
-    renderer.snapshotTarget.querySelectorAll(elements).forEach((n: any) => registerDynamicElement(renderer, n));
+    const list = renderer.snapshotTarget.querySelectorAll(elements);
+    for (const n of list as any) registerDynamicElement(renderer, n as Element);
     return;
   }
-  if ((NodeList as any).prototype.isPrototypeOf(elements) || Array.isArray(elements)) {
-    Array.from(elements as any).forEach((n: any) => registerDynamicElement(renderer, n));
+  if (elements instanceof NodeList || Array.isArray(elements)) {
+    for (const n of Array.from(elements as any)) registerDynamicElement(renderer, n as Element);
     return;
   }
   add(elements as Element);

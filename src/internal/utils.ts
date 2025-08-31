@@ -11,7 +11,7 @@ export function effectiveZ(element: Element): number {
   while (node && node !== document.body) {
     const style = window.getComputedStyle(node as Element);
     if (style.position !== "static" && style.zIndex !== "auto") {
-      const z = parseInt(style.zIndex, 10);
+      const z = Number.parseInt(style.zIndex, 10);
       if (!Number.isNaN(z)) return z;
     }
     node = (node as HTMLElement).parentElement;
@@ -25,16 +25,19 @@ export function isIgnored(el: Element | null): boolean {
   );
 }
 
+const MATRIX_RE = /matrix\((.+)\)/;
+const MATRIX3D_RE = /matrix3d\((.+)\)/;
+
 export function parseTransform(transform: string): [number, number, number, number, number, number] {
   if (transform === "none") return [1, 0, 0, 1, 0, 0];
-  const matrixMatch = transform.match(/matrix\((.+)\)/);
+  const matrixMatch = transform.match(MATRIX_RE);
   if (matrixMatch) {
-    const values = matrixMatch[1].split(",").map((v) => parseFloat(v.trim()));
+    const values = matrixMatch[1].split(",").map((v) => Number.parseFloat(v.trim()));
     return values as any;
   }
-  const matrix3dMatch = transform.match(/matrix3d\((.+)\)/);
+  const matrix3dMatch = transform.match(MATRIX3D_RE);
   if (matrix3dMatch) {
-    const v = matrix3dMatch[1].split(",").map((x) => parseFloat(x.trim()));
+    const v = matrix3dMatch[1].split(",").map((x) => Number.parseFloat(x.trim()));
     return [v[0], v[1], v[4], v[5], v[12], v[13]] as any;
   }
   return [1, 0, 0, 1, 0, 0];

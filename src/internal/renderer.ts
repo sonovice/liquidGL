@@ -1,9 +1,9 @@
-import { createProgram } from "./webgl";
-import { fragmentShader, vertexShader } from "./shaders";
-import { debounce, effectiveZ, isIgnored } from "./utils";
-import type { BoundsRect } from "./types";
-import LiquidGLLens from "./lens";
-import { registerDynamicElement } from "./runtime-dynamic";
+import { createProgram } from "./webgl.ts";
+import { fragmentShader, vertexShader } from "./shaders.ts";
+import { debounce, effectiveZ, isIgnored } from "./utils.ts";
+import type { BoundsRect } from "./types.ts";
+import LiquidGLLens from "./lens.ts";
+import { registerDynamicElement } from "./runtime-dynamic.ts";
 
 type GL = WebGLRenderingContext | WebGL2RenderingContext;
 

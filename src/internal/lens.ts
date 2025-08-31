@@ -1,5 +1,7 @@
-import type { LiquidGLRenderer } from "./renderer";
-import { effectiveZ } from "./utils";
+import type { LiquidGLRenderer } from "./renderer.ts";
+import { effectiveZ } from "./utils.ts";
+const RGBA_RE = /rgba?\(([^)]+)\)/;
+const SPLIT_SPACES_RE = /[ ,]+/;
 
 export class LiquidGLLens {
   renderer: LiquidGLRenderer;
@@ -48,9 +50,9 @@ export class LiquidGLLens {
     this.el.style.position = this.el.style.position === "static" ? "relative" : this.el.style.position;
 
     const bgCol = window.getComputedStyle(this.el).backgroundColor;
-    const rgbaMatch = bgCol.match(/rgba?\(([^)]+)\)/);
+    const rgbaMatch = bgCol.match(RGBA_RE);
     if (rgbaMatch) {
-      const comps = rgbaMatch[1].split(/[ ,]+/).map(parseFloat);
+      const comps = rgbaMatch[1].split(SPLIT_SPACES_RE).map(Number.parseFloat);
       const [r, g, b] = comps;
       this.el.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0)`;
     }
@@ -147,21 +149,21 @@ export class LiquidGLLens {
     const start = performance.now();
     const animate = () => {
       const progress = Math.min(1, (performance.now() - start) / dur);
-      (this.renderer.lenses as any[]).forEach((ln: any) => {
+      for (const ln of this.renderer.lenses as any[]) {
         ln._revealProgress = progress;
         ln.el.style.opacity = String(((ln.originalOpacity as any) || 1) * progress);
         if (ln._shadowEl) ln._shadowEl.style.opacity = String(progress);
-      });
+      }
       this.renderer.canvas.style.opacity = String(progress);
       this.renderer.render();
       if (progress < 1) {
         requestAnimationFrame(animate);
       } else {
         (this.renderer as any)._revealAnimating = false;
-        (this.renderer.lenses as any[]).forEach((ln: any) => {
+        for (const ln of this.renderer.lenses as any[]) {
           ln.el.style.transition = ln.originalTransition || "";
           ln._TriggerInit();
-        });
+        }
       }
     };
     requestAnimationFrame(animate);
@@ -211,7 +213,7 @@ export class LiquidGLLens {
       this.el.style.transformOrigin = `50% 50%`;
       this.el.style.transform = transformStr;
       this.renderer.render();
-    } as any;
+    };
 
     this._onMouseEnter = (e: any) => {
       if (this._resetCleanupTimer) {
@@ -225,9 +227,9 @@ export class LiquidGLLens {
       const r = this._baseRect || this.el.getBoundingClientRect();
       const cx = r.left + r.width / 2;
       const cy = r.top + r.height / 2;
-      (this as any)._applyTilt(cx, cy);
+      this._applyTilt?.(cx, cy);
       if (e && typeof e.clientX === "number") {
-        requestAnimationFrame(() => (this as any)._applyTilt(e.clientX, e.clientY));
+        requestAnimationFrame(() => this._applyTilt?.(e.clientX, e.clientY));
       }
       document.addEventListener("mousemove", this._docPointerMove as any, { passive: true });
     };
@@ -239,24 +241,24 @@ export class LiquidGLLens {
       const r = this.el.getBoundingClientRect();
       const inside = x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
       if (inside) {
-        (this as any)._applyTilt(x, y);
+        this._applyTilt?.(x, y);
       } else {
         this._smoothReset();
       }
     };
 
     this.el.addEventListener("mouseenter", this._onMouseEnter as any, { passive: true });
-    this.el.addEventListener("mousemove", (e) => (this as any)._applyTilt((e as MouseEvent).clientX, (e as MouseEvent).clientY), { passive: true });
+    this.el.addEventListener("mousemove", (e) => this._applyTilt?.((e as MouseEvent).clientX, (e as MouseEvent).clientY), { passive: true });
     this.el.addEventListener("touchstart", (e) => {
       if ((e as TouchEvent).touches && (e as TouchEvent).touches.length === 1) {
         const t = (e as TouchEvent).touches[0];
-        (this as any)._applyTilt(t.clientX, t.clientY);
+        this._applyTilt?.(t.clientX, t.clientY);
       }
     }, { passive: true });
     this.el.addEventListener("touchmove", (e) => {
       if ((e as TouchEvent).touches && (e as TouchEvent).touches.length === 1) {
         const t = (e as TouchEvent).touches[0];
-        (this as any)._applyTilt(t.clientX, t.clientY);
+        this._applyTilt?.(t.clientX, t.clientY);
       }
     }, { passive: true });
     this.el.addEventListener("touchend", () => this._smoothReset(), { passive: true });

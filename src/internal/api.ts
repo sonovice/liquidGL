@@ -1,5 +1,5 @@
-import { LiquidGLRenderer } from "./renderer";
-import type { LiquidGLOptions } from "./types";
+import { LiquidGLRenderer } from "./renderer.ts";
+import type { LiquidGLOptions } from "./types.ts";
 
 const defaults: Required<LiquidGLOptions> = {
   target: ".liquidGL",
@@ -29,29 +29,31 @@ export function installOnWindow() {
     }
     if (w.__liquidGLNoWebGL__) {
       const fallbackNodes = document.querySelectorAll(options.target);
-      fallbackNodes.forEach((node: any) => {
-        Object.assign(node.style, {
+      for (const node of fallbackNodes as any) {
+        Object.assign((node as any).style, {
           background: "rgba(255, 255, 255, 0.07)",
           backdropFilter: "blur(12px)",
           webkitBackdropFilter: "blur(12px)",
         });
-      });
-      return fallbackNodes.length === 1 ? fallbackNodes[0] : Array.from(fallbackNodes);
+      }
+      return fallbackNodes.length === 1 ? (fallbackNodes[0] as any) : Array.from(fallbackNodes);
     }
     let renderer = w.__liquidGLRenderer__ as LiquidGLRenderer | undefined;
     if (!renderer) {
-      renderer = new LiquidGLRenderer(options.snapshot!, options.resolution!);
+      const snapshot = options.snapshot ?? "body";
+      const resolution = options.resolution ?? 2.0;
+      renderer = new LiquidGLRenderer(snapshot, resolution);
       w.__liquidGLRenderer__ = renderer;
     }
-    const nodeList = document.querySelectorAll(options.target!);
+    const nodeList = document.querySelectorAll(options.target ?? ".liquidGL");
     if (!nodeList || nodeList.length === 0) {
       console.warn(`liquidGL: Target element(s) '${options.target}' not found.`);
       return;
     }
     const instances = Array.from(nodeList).map((el) => (renderer as any).addLens(el, options));
-    if (!(renderer as any)._rafId && !renderer!.useExternalTicker) {
+    if (!(renderer as any)._rafId && !(renderer?.useExternalTicker)) {
       const loop = () => {
-        renderer!.render();
+        renderer?.render();
         (renderer as any)._rafId = requestAnimationFrame(loop);
       };
       (renderer as any)._rafId = requestAnimationFrame(loop);
@@ -61,7 +63,7 @@ export function installOnWindow() {
 
   w.liquidGL.registerDynamic = function registerDynamic(elements: string | Element | NodeList | Element[]) {
     const renderer: LiquidGLRenderer | undefined = w.__liquidGLRenderer__;
-    if (!renderer || !(renderer as any).addDynamicElement) return;
+    if (!(renderer && (renderer as any).addDynamicElement)) return;
     (renderer as any).addDynamicElement(elements);
     if ((renderer as any).captureSnapshot) (renderer as any).captureSnapshot();
   };
@@ -87,8 +89,10 @@ export function installOnWindow() {
       if (loco) {
         loco.on("scroll", ST.update);
         ST.scrollerProxy(loco.el, {
-          scrollTop(value: number) {
-            return arguments.length ? loco.scrollTo(value, { duration: 0, disableLerp: true }) : loco.scroll.instance.scroll.y;
+          scrollTop(value?: number) {
+            return typeof value === "number"
+              ? loco.scrollTo(value, { duration: 0, disableLerp: true })
+              : loco.scroll.instance.scroll.y;
           },
           getBoundingClientRect() {
             return { top: 0, left: 0, width: window.innerWidth, height: window.innerHeight };
